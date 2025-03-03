@@ -1,0 +1,33 @@
+FROM ai-english-tutor-base:latest
+
+WORKDIR /app
+
+# Copy backend code
+COPY backend/ .
+
+# Frontend build stage
+FROM node:18 AS frontend-build
+
+WORKDIR /app/frontend
+
+# Copy node_modules from base image
+COPY --from=0 /app/frontend/node_modules ./node_modules
+
+# Copy frontend source code
+COPY frontend/ ./
+
+# Build frontend
+RUN npm run build
+
+# Final stage
+FROM ai-english-tutor-base:latest
+
+WORKDIR /app
+
+# Copy backend code
+COPY backend/ .
+
+# Copy built frontend from the frontend-build stage
+COPY --from=frontend-build /app/frontend/build /app/static
+
+CMD ["/app/start.sh"]

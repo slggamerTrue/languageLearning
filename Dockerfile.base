@@ -1,0 +1,58 @@
+FROM node:18 AS frontend-base
+
+WORKDIR /app/frontend
+
+# Copy frontend package.json and package-lock.json
+COPY frontend/package*.json ./
+
+# Install frontend dependencies
+RUN npm install
+
+# Backend base stage
+FROM python:3.10-slim AS backend-base
+
+WORKDIR /app
+
+# Copy backend requirements
+COPY backend/requirements.txt .
+
+# Install backend dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Final base image
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Copy backend dependencies from backend-base
+COPY --from=backend-base /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=backend-base /usr/local/bin /usr/local/bin
+
+# Create frontend directory
+RUN mkdir -p /app/frontend
+
+# Copy node modules from frontend-base
+COPY --from=frontend-base /app/frontend/node_modules /app/frontend/node_modules
+
+# Create a script to start both services
+RUN echo '#!/bin/bash\n\
+# Start the backend server\n\
+uvicorn main:app --host 0.0.0.0 --port 9000 &\n\
+\n\
+# Start a simple HTTP server for the frontend\n\
+cd /app/static && python -m http.server 3000\n\
+' > /app/start.sh
+
+RUN chmod +x /app/start.sh
+
+# Set environment variables
+ENV MONGODB_URI=mongodb://mongo:27017
+ENV JWT_SECRET=your-super-secret-key-change-this-in-production
+
+# Create placeholder directories for code
+RUN mkdir -p /app/static
+
+# Expose ports for frontend and backend
+EXPOSE 3000 9000
+
+CMD ["/app/start.sh"]

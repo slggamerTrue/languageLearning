@@ -1,0 +1,26 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+from api import lesson_api, assessment
+
+# 加载环境变量
+load_dotenv()
+
+app = FastAPI(title="AI English Tutor API")
+
+# 配置CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 在生产环境中应该限制为具体的域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 注册路由
+app.include_router(lesson_api.router)
+app.include_router(assessment.router)
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to AI English Tutor API"}
