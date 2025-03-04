@@ -10,12 +10,39 @@ async def test_conversation_flow():
         create_lesson_data = {
             "mode": "practice",
             "topic": "Job Interview Practice",
-            "scene": {
-                "description": "这是一个产品经理职位的面试。",
-                "your_role": "你是一位面试官，是产品部门的高级经理。",
-                "student_role": "学生是一位应聘产品经理职位的候选人。",
-                "additional_info": "公司是一家成长期的科技公司，主要产品是企业SaaS软件。",
-                "current_situation": "面试即将开始，候选人已经就座。"
+            "assessment_day": {
+                "day_number": 1,
+                "knowledge_points": [
+                    {
+                        "name": "Interview greetings",
+                        "level": 2,
+                        "examples": ["Good morning, thank you for having me", "It's a pleasure to meet you"]
+                    },
+                    {
+                        "name": "Self-introduction",
+                        "level": 3,
+                        "examples": ["I have X years of experience in...", "My background is in..."]
+                    },
+                    {
+                        "name": "Discussing strengths",
+                        "level": 2,
+                        "examples": ["My greatest strength is...", "I excel at..."]
+                    }
+                ],
+                "materials": [
+                    {
+                        "type": "video",
+                        "title": "Successful Job Interviews",
+                        "content": "A video showing examples of successful job interviews"
+                    }
+                ],
+                "review_activities": [
+                    {
+                        "type": "roleplay",
+                        "description": "Practice answering common interview questions"
+                    }
+                ],
+                "estimated_time": 30
             }
         }
         

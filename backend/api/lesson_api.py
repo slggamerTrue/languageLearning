@@ -30,7 +30,6 @@ class SceneConfig(BaseModel):
 class Lesson(BaseModel):
     mode: str
     topic: str
-    scene: Optional[SceneConfig] = None
     assessment_day: Optional[Dict] = None
 
 class LessonContent(BaseModel):
@@ -47,7 +46,6 @@ class LessonStep(BaseModel):
 class CreateLessonRequest(BaseModel):
     mode: Literal["study", "practice"]
     topic: str
-    scene: Optional[SceneConfig] = None
     assessment_day: Optional[Dict] = None
 
 class ChatRequest(BaseModel):
@@ -65,52 +63,35 @@ async def create_lesson(request: CreateLessonRequest):
     try:
         mode = LessonMode.STUDY if request.mode == "study" else LessonMode.PRACTICE
         
-        if mode == LessonMode.STUDY and not request.assessment_day:
-            raise HTTPException(status_code=400, detail="Study mode requires assessment_day data")
+        if not request.assessment_day:
+            raise HTTPException(status_code=400, detail="requires assessment_day data")
             
         lesson = Lesson(
             mode=mode.value,
             topic=request.topic,
-            scene=request.scene,
-            assessment_day=request.assessment_day if mode == LessonMode.STUDY else None
+            assessment_day=request.assessment_day
         )
         
         # 生成系统提示和欢迎消息
-        if lesson.scene:  # 角色扮演模式
+        if mode == LessonMode.PRACTICE:  # 角色扮演模式
             # 构建场景资源提示
-            resources_prompt = ""
-            if lesson.scene.resources:
-                resources_prompt = "Available resources in this scene:\n"
-                for resource in lesson.scene.resources:
-                    resources_prompt += f"- {resource.title} ({resource.resource_type})\n"
-            
             system_prompt = f"""You are in a role-playing scenario. Stay in character and respond naturally based on your role.
             If the student uses Chinese or asks to use Chinese, respond in a way that naturally encourages English use while staying in character.
             
-            Scene description: {lesson.scene.description}
-            Current situation: {lesson.scene.current_situation}
-            Your role: {lesson.scene.your_role}
-            Student role: {lesson.scene.student_role}
-            Additional context: {lesson.scene.additional_info}
-            
-            {resources_prompt}
+            Based on the following information to build a role-playing scenario.
+            Today's topic: {lesson.topic}
+            Lesson Info: {lesson.assessment_day} 
             
             Important guidelines:
             1. For each response, provide two fields:
-               - display_text: The text shown to the user (can include formatting for menus, lists, etc)
-               - speech_text: A natural, conversational version suitable for speaking
-            
-            2. When showing resources (like menus, lectures, etc):
-               - Use appropriate formatting (markdown/tables) for display_text
-               - Provide a slide-level description for speech_text if it can reduce the likelihood of confusion
-               - Only show resources when specifically requested
+               - display_text: 基于课程信息生成一个场景，对场景进行简单描述，并且分配bot和user的角色
+               - speech_text: 你作为bot，基于display_text中bot的角色，生成一个开场语，A natural, conversational version suitable for speaking
             
             3. Stay in character while:
                - Describing or presenting resources
                - Answering questions about the resources
                - Guiding the conversation naturally
-            
-            Start with a natural, in-character greeting appropriate for the scene.
+        
             """
         else:  # 学习模式
             system_prompt = f"""You are an experienced English tutor helping students learn English.

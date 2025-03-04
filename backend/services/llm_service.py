@@ -5,7 +5,12 @@ import os
 
 class LLMService:
     def __init__(self):
-        pass
+        self.base_url = "https://llm.promptai.cn/pk/api/chat"
+        self.model = "pkqwen2.5-32b:latest"
+        self.headers = {
+            "Content-Type": "application/json",
+            
+        }
 
     async def chat_completion(self, messages: List[Dict]) -> Dict:
         """
@@ -42,8 +47,7 @@ class LLMService:
         # 添加格式要求到系统提示
         format_message = {
             "role": "system",
-            "content": f'''你是一个JSON格式化工具。你的工作是将用户输入转换为指定的JSON格式。
-
+            "content": f'''
 要求的输出格式如下：
 {output_format}
 
@@ -161,8 +165,6 @@ class LLMService:
             except Exception as e:
                 print(f"\n=== JSON 解析错误 ===\n")
                 print(f"Error: {str(e)}")
-                print(f"Position: {e.pos}")
-                print(f"Line: {e.lineno}, Column: {e.colno}")
                 print()
                 return {"content": content}
             

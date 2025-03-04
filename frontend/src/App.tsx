@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import './App.css';
+
+// API base URL - use relative URL in production or absolute URL in development
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? '/api' // In production, use relative path (served by same domain)
+  : 'http://localhost:9000/api'; // In development, use explicit host
 import { MessageDisplay } from './components/MessageDisplay';
 import { ChatInput } from './components/ChatInput';
 import {
@@ -67,7 +72,7 @@ function App() {
     },
     {
       mode: 'practice',
-      topic: 'Office Introduction Practice',
+      topic: 'Greetings and Introductions in the Workplace',
       speech_text: 'Now, let\'s practice introducing yourself in a professional setting...',
       display_text: '# Practice Scenario\n\nYou are a new employee attending your first team meeting.\n\n## Key Phrases:\n- "Hello everyone, I\'m [name]"\n- "I\'m excited to join the team"',
       scene: {
@@ -105,7 +110,7 @@ function App() {
         content: 'Hello, I would like to improve my English. Can you help me assess my current level?'
       };
       
-      const response = await axios.post(`http://localhost:9000/api/assessment/initial-chat`, [initialMessage]);
+      const response = await axios.post(`${API_BASE_URL}/assessment/initial-chat`, [initialMessage]);
 
       const assistantMessage: Message = {
         role: 'assistant' as const,
@@ -118,7 +123,7 @@ function App() {
         setLoadingStatus('正在分析对话内容...');
         
         // 分析对话生成用户档案
-        const profileResponse = await axios.post('http://localhost:9000/api/assessment/analyze-profile', [initialMessage, assistantMessage]);
+        const profileResponse = await axios.post(`${API_BASE_URL}/assessment/analyze-profile`, [initialMessage, assistantMessage]);
         const userProfile = profileResponse.data;
         
         setLoadingStatus('正在生成学习计划...');
@@ -140,7 +145,7 @@ function App() {
         };
         
         // 创建课程
-        const lessonResponse = await axios.post('http://localhost:9000/api/lesson/create', {
+        const lessonResponse = await axios.post(`${API_BASE_URL}/lesson/create`, {
           mode: 'study',
           topic: studyLesson.topic,
           assessment_day: studyLesson
@@ -163,7 +168,7 @@ function App() {
     try {
       setIsLoading(true);
       setLoadingStatus('正在创建课程...');
-      const response = await axios.post('http://localhost:9000/api/lesson/create', formData);
+      const response = await axios.post(`${API_BASE_URL}/lesson/create`, formData);
       const { lesson: newLesson, conversation_history } = response.data;
       setLesson(newLesson);
       setMessages(conversation_history || []);
@@ -196,7 +201,7 @@ function App() {
       if (currentView === 'assessment') {
         // Use assessment API endpoint
         response = await axios.post(
-          'http://localhost:9000/api/assessment/initial-chat',
+          `${API_BASE_URL}/assessment/initial-chat`,
           updatedMessages
         );
         
@@ -212,17 +217,20 @@ function App() {
           setLoadingStatus('正在分析对话内容...');
           
           // Analyze conversation to generate user profile
-          const profileResponse = await axios.post('http://localhost:9000/api/assessment/analyze-profile', updatedMessages);
+          const profileResponse = await axios.post(`${API_BASE_URL}/assessment/analyze-profile`, updatedMessages);
           const userProfile = profileResponse.data;
           
           setLoadingStatus('正在生成学习计划...');
           
           // Generate weekly plan using user profile
-          const weeklyPlanResponse = await axios.post('http://localhost:9000/api/assessment/generate-weekly-plan', userProfile);
+          const weeklyPlanResponse = await axios.post(`${API_BASE_URL}/assessment/generate-weekly-plan`, userProfile);
           const weeklyPlan = weeklyPlanResponse.data;
           
-          // Create courses based on weekly plan
-          const generatedCourses: Lesson[] = weeklyPlan.map((day: WeeklyPlanDay, index: number) => {
+          // Create courses based on weekly plan - both study and practice modes for each topic
+          const generatedCourses: Lesson[] = [];
+          
+          weeklyPlan.forEach((day: WeeklyPlanDay) => {
+            // Create study mode lesson
             const studyLesson: StudyLesson = {
               mode: 'study',
               topic: day.topic,
@@ -234,7 +242,25 @@ function App() {
               speech_text: `Welcome to Day ${day.day_number}: ${day.topic}`,
               display_text: `# Day ${day.day_number}: ${day.topic}\n\n## Knowledge Points:\n${day.knowledge_points.map((kp: any) => `- ${kp.name}`).join('\n')}`
             };
-            return studyLesson;
+            
+            // Create practice mode lesson with the same topic
+            const practiceLesson: PracticeLesson = {
+              mode: 'practice',
+              topic: day.topic,
+              speech_text: `Let's practice what we learned about ${day.topic}`,
+              display_text: `# Practice: ${day.topic}\n\nLet's apply what we've learned in a real-world scenario.`,
+              scene: {
+                description: `Practice scenario for ${day.topic}`,
+                your_role: 'English tutor',
+                student_role: 'English learner',
+                additional_info: `This practice session focuses on ${day.topic}`,
+                current_situation: 'You are having a conversation to practice the learned concepts',
+                resources: []
+              }
+            };
+            
+            // Add both lessons to the array
+            generatedCourses.push(studyLesson, practiceLesson);
           });
           
           // Set available courses
@@ -244,7 +270,7 @@ function App() {
       } else {
         // Use lesson API endpoint
         response = await axios.post(
-          'http://localhost:9000/api/lesson/chat',
+          `${API_BASE_URL}/lesson/chat`,
           {
             lesson: lesson,
             conversation_history: updatedMessages,
@@ -361,17 +387,30 @@ ${(course as PracticeLesson).scene.description}`}
                     const createLessonRequest = {
                       mode: course.mode,
                       topic: course.topic,
-                      scene: course.mode === 'practice' ? (course as PracticeLesson).scene : undefined,
                       assessment_day: course.mode === 'study' ? {
                         day_number: (course as StudyLesson).day_number,
                         knowledge_points: (course as StudyLesson).knowledge_points,
                         materials: (course as StudyLesson).materials,
                         review_activities: (course as StudyLesson).review_activities,
                         estimated_time: (course as StudyLesson).estimated_time
-                      } : undefined
+                      } : {
+                        day_number: 1,
+                        knowledge_points: [
+                          { name: "Professional greetings", level: 2, examples: ["Good morning/afternoon", "It's a pleasure to meet you"] },
+                          { name: "Self-introduction", level: 2, examples: ["I'm [name] from [department]", "I've been with the company for [time]"] },
+                          { name: "Small talk", level: 1, examples: ["How was your weekend?", "How's your project going?"] }
+                        ],
+                        materials: [
+                          { type: "video", title: "Business Introductions", content: "A short video demonstrating proper business introductions" }
+                        ],
+                        review_activities: [
+                          { type: "roleplay", description: "Practice introducing yourself to a new colleague" }
+                        ],
+                        estimated_time: 30
+                      }
                     };
                     
-                    axios.post('http://localhost:9000/api/lesson/create', createLessonRequest)
+                    axios.post(`${API_BASE_URL}/lesson/create`, createLessonRequest)
                       .then(response => {
                         const { lesson: newLesson, conversation_history } = response.data;
                         setLesson(newLesson);
@@ -457,7 +496,7 @@ ${(course as PracticeLesson).scene.description}`}
                       review_activities: studyCourse.review_activities,
                       estimated_time: studyCourse.estimated_time
                     };
-                    const response = await axios.post('http://localhost:9000/api/lesson/create', sampleLesson);
+                    const response = await axios.post(`${API_BASE_URL}/lesson/create`, sampleLesson);
                     const { lesson: newLesson, conversation_history } = response.data;
                     setLesson(newLesson);
                     setMessages(conversation_history || []);
@@ -495,7 +534,7 @@ ${(course as PracticeLesson).scene.description}`}
                                const request = course.mode === 'study' 
                                  ? { mode: 'study', topic: course.topic, assessment_day: course as StudyLesson } 
                                  : { mode: 'practice', topic: course.topic, scene: (course as PracticeLesson).scene };
-                               const response = await axios.post('http://localhost:9000/api/lesson/create', request);
+                               const response = await axios.post(`${API_BASE_URL}/lesson/create`, request);
                                const { lesson: newLesson, conversation_history } = response.data;
                                setLesson(newLesson);
                                setMessages(conversation_history || []);

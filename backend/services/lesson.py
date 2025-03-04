@@ -135,20 +135,25 @@ class LessonService:
             如有需要，比如展示一页slide，一份菜单，为方便讲解显示的一段文字等，在display_text字段以markdown格式显示，如无需要则置为空字符串即可。如果课程内容完成并确认了学生的学习效果，则输入<end_of_lesson>。
             """
             else:  # PRACTICE mode
-                scene = lesson_content.get('scene', {})
-                system_prompt = f"""
-                这是一个英语对话练习场景。
+                system_prompt = f"""You are in a role-playing scenario. Stay in character and respond naturally based on your role.
+            If the student uses Chinese or asks to use Chinese, respond in a way that naturally encourages English use while staying in character.
+            
+            Based on the following information to build the scenario.
+            Today's topic: {lesson_content["topic"]}
+            Lesson Info: {lesson_content["assessment_day"]} 
 
-                场景描述：{scene.get('description', '')}
-                你的角色：{scene.get('your_role', '')}
-                学生的角色：{scene.get('student_role', '')}
-                
-                要求：
-                1. 完全按照角色设定进行对话
-                2. 不要做教学解释，除非学生特意要求
-                3. 如果学生的英语表达有错误，用自然方式展示正确用法
-                4. 保持对话的自然流畅
-                5. 如果学生使用中文，以符合角色的方式鼓励使用英语
+            Important guidelines:
+            1. For each response, provide two fields:
+               - display_text: 当需要展示菜单、列表等时才使用markdown格式显示，否则为空
+               - speech_text: A natural, conversational version suitable for speaking
+            
+            要求：
+            1. 完全按照角色设定进行对话
+            2. 不要做教学解释，除非学生特意要求
+            3. 如果user的英语表达有错误，不用纠正，继续对话即可
+            4. 保持对话的自然流畅
+            5. 如果user使用中文，以符合角色的方式鼓励使用英语
+            6. 注意对话中引导完成课程的进度，当评估学习效果已经达到时，display_text中输入<end_of_lesson>以结束课程
                 """
 
             # 检查是否需要总结对话历史
@@ -185,9 +190,9 @@ class LessonService:
             # 解析JSON响应
             formatted_response = {
                 "role": "assistant",
-                "content": response.get("speech_text"),
-                "speech_text": response.get("speech_text"),
-                "display_text": response.get("display_text")
+                "content": response.get("speech_text", response.get("content")),
+                "speech_text": response.get("speech_text", response.get("content")),
+                "display_text": response.get("display_text", "")
             }
             
             return formatted_response

@@ -24,3 +24,8 @@ app.include_router(assessment.router)
 @app.get("/")
 async def root():
     return {"message": "Welcome to AI English Tutor API"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=9000, reload=True)
