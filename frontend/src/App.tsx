@@ -9,6 +9,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   : 'http://localhost:9000/api'; // In development, use explicit host
 import { MessageDisplay } from './components/MessageDisplay';
 import { ChatInput } from './components/ChatInput';
+import { AssessmentFlow } from './components/AssessmentFlow';
 import {
   Message,
   Scene,
@@ -101,67 +102,21 @@ function App() {
     }
   });
 
-  const startInitialAssessment = async () => {
-    try {
-      setIsLoading(true);
-      setLoadingStatus('正在准备评估...');
-      const initialMessage: Message = {
-        role: 'user' as const,
-        content: 'Hello, I would like to improve my English. Can you help me assess my current level?'
-      };
-      
-      const response = await axios.post(`${API_BASE_URL}/assessment/initial-chat`, [initialMessage]);
-
-      const assistantMessage: Message = {
-        role: 'assistant' as const,
-        content: response.data.content || response.data
-      };
-      setMessages([initialMessage, assistantMessage]);
-
-      // 如果包含完成标记，分析对话生成用户档案
-      if (assistantMessage.content.includes('<ASSESSMENT_COMPLETE>')) {
-        setLoadingStatus('正在分析对话内容...');
-        
-        // 分析对话生成用户档案
-        const profileResponse = await axios.post(`${API_BASE_URL}/assessment/analyze-profile`, [initialMessage, assistantMessage]);
-        const userProfile = profileResponse.data;
-        
-        setLoadingStatus('正在生成学习计划...');
-        
-        // 使用用户档案生成每周学习计划
-        const weeklyPlanResponse = await axios.post('http://localhost:9000/api/assessment/generate-weekly-plan', userProfile);
-        const weeklyPlan: WeeklyPlanDay[] = weeklyPlanResponse.data;
-        
-        // 创建基于用户档案和学习计划的课程
-        const studyLesson: StudyLesson = {
-          mode: 'study',
-          topic: `English Learning for ${userProfile.english_level.charAt(0).toUpperCase() + userProfile.english_level.slice(1)} Level`,
-          speech_text: `Welcome to your personalized English learning journey! Based on your ${userProfile.english_level} level and interests in ${userProfile.interests.join(', ')}, we've created a custom plan for you.`,
-          knowledge_points: weeklyPlan[0].knowledge_points, // 使用第一天的知识点
-          display_text: `# Your Personalized English Learning Plan\n\n## Based on Your Profile:\n- Level: ${userProfile.english_level}\n- Interests: ${userProfile.interests.join(', ')}\n- Goals: ${userProfile.learning_goals.join(', ')}\n- Daily study time: ${userProfile.study_time_per_day} minutes\n\n## This Week's Focus:\n${weeklyPlan.map((day: WeeklyPlanDay) => `### Day ${day.day_number}: ${day.topic}`).join('\n')}`,
-          materials: weeklyPlan[0].materials,
-          review_activities: weeklyPlan[0].review_activities,
-          estimated_time: weeklyPlan[0].estimated_time
-        };
-        
-        // 创建课程
-        const lessonResponse = await axios.post(`${API_BASE_URL}/lesson/create`, {
-          mode: 'study',
-          topic: studyLesson.topic,
-          assessment_day: studyLesson
-        });
-        
-        const { lesson: newLesson, conversation_history } = lessonResponse.data;
-        setLesson(newLesson);
-        setMessages(conversation_history || []);
-      }
-    } catch (error) {
-      console.error('Error starting assessment:', error);
-      setCurrentView('home');
-    } finally {
-      setIsLoading(false);
-      setLoadingStatus('');
-    }
+  // Start the assessment flow using the new component
+  const startInitialAssessment = () => {
+    setCurrentView('assessment');
+  };
+  
+  // Handle completion of the assessment flow
+  const handleAssessmentComplete = (newLesson: any, conversationHistory: Message[]) => {
+    setLesson(newLesson);
+    setMessages(conversationHistory || []);
+    setCurrentView('lesson');
+  };
+  
+  // Handle cancellation of the assessment flow
+  const handleAssessmentCancel = () => {
+    setCurrentView('home');
   };
 
   const createCustomLesson = async (formData: PracticeLesson) => {
@@ -316,138 +271,26 @@ function App() {
 
         {currentView === 'home' ? (
           <div className="p-8 text-center">
-            <h2 className="text-xl mb-4">Welcome to AI English Tutor!</h2>
-            <p className="mb-4">Choose how you'd like to start:</p>
+            <h1 className="text-3xl font-bold mb-8">Welcome to AI English Tutor</h1>
             <div className="space-y-4">
               <button
-                onClick={() => {
-                  setCurrentView('courses');
-                  setAvailableCourses(sampleCourses);
-                }}
-                className="w-full px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
-              >
-                查看示例课程
-              </button>
-              <button
-                onClick={() => {
-                  setCurrentView('assessment');
-                  startInitialAssessment();
-                }}
-                className="w-full bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                disabled={isLoading}
+                onClick={startInitialAssessment}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 w-full max-w-md"
               >
                 Start Assessment
               </button>
               <button
-                onClick={() => setCurrentView('practice')}
-                className="w-full bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                disabled={isLoading}
+                onClick={() => setCurrentView('courses')}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 w-full max-w-md"
               >
-                Start Practice
+                Browse Courses
               </button>
-            </div>
-          </div>
-        ) : currentView === 'courses' ? (
-          <div className="p-8">
-            <h2 className="text-xl mb-6 text-center">Available Courses</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {availableCourses.map((course, index) => (
-                <div 
-                  key={index} 
-                  className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer bg-white"
-                  onClick={() => {
-                    // 立即切换到课程界面并显示准备状态
-                    setCurrentView('lesson');
-                    setIsLoading(true);
-                    setLoadingStatus('正在准备评估...');
-                    setMessages([{
-                      role: 'assistant',
-                      content: '正在准备评估...',
-                      display_text: `# 正在准备课程
-
-正在为您准备《${course.topic}》课程，请稍候...
-
-## 课程信息
-
-${course.mode === 'study' 
-  ? `### 知识点
-${(course as StudyLesson).knowledge_points.map(point => `- ${point.name}`).join('\n')}` 
-  : `### 场景
-${(course as PracticeLesson).scene.description}`}
-
-### 课程信息
-- 模式：${course.mode === 'study' ? '学习模式' : '练习模式'}
-- 预计时间：${course.mode === 'study' ? `${(course as StudyLesson).estimated_time} minutes` : '30 minutes'}
-
-> 正在连接服务器，请稍候...`
-                    }]);
-
-                    // 在后台创建课程
-                    // 转换课程数据以匹配后端期望的格式
-                    const createLessonRequest = {
-                      mode: course.mode,
-                      topic: course.topic,
-                      assessment_day: course.mode === 'study' ? {
-                        day_number: (course as StudyLesson).day_number,
-                        knowledge_points: (course as StudyLesson).knowledge_points,
-                        materials: (course as StudyLesson).materials,
-                        review_activities: (course as StudyLesson).review_activities,
-                        estimated_time: (course as StudyLesson).estimated_time
-                      } : {
-                        day_number: 1,
-                        knowledge_points: [
-                          { name: "Professional greetings", level: 2, examples: ["Good morning/afternoon", "It's a pleasure to meet you"] },
-                          { name: "Self-introduction", level: 2, examples: ["I'm [name] from [department]", "I've been with the company for [time]"] },
-                          { name: "Small talk", level: 1, examples: ["How was your weekend?", "How's your project going?"] }
-                        ],
-                        materials: [
-                          { type: "video", title: "Business Introductions", content: "A short video demonstrating proper business introductions" }
-                        ],
-                        review_activities: [
-                          { type: "roleplay", description: "Practice introducing yourself to a new colleague" }
-                        ],
-                        estimated_time: 30
-                      }
-                    };
-                    
-                    axios.post(`${API_BASE_URL}/lesson/create`, createLessonRequest)
-                      .then(response => {
-                        const { lesson: newLesson, conversation_history } = response.data;
-                        setLesson(newLesson);
-                        setMessages(conversation_history || []);
-                      })
-                      .catch(error => {
-                        console.error('Error creating lesson:', error);
-                        setMessages([{
-                          role: 'assistant',
-                          content: '抱歉，创建课程时出现错误。请重试。',
-                          display_text: '# 出错了\n\n抱歉，在准备课程内容时遇到了问题。请返回课程列表重试。'
-                        }]);
-                      })
-                      .finally(() => {
-                        setIsLoading(false);
-                        setLoadingStatus('');
-                      });
-                  }}
-                >
-                  <div className={`text-xs font-semibold mb-2 inline-block px-2 py-1 rounded ${
-                    course.mode === 'study' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                  }`}>
-                    {course.mode === 'study' ? '学习模式' : '练习模式'}
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">{course.topic}</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    {course.mode === 'study' 
-                      ? `知识点: ${(course as StudyLesson).knowledge_points.map(point => point.name).join(', ')}` 
-                      : (course as PracticeLesson).scene.description}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    预计时间: {course.mode === 'study' 
-                      ? `${(course as StudyLesson).estimated_time} minutes`
-                      : '30 minutes'}
-                  </p>
-                </div>
-              ))}
+              <button
+                onClick={() => setCurrentView('practice')}
+                className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 w-full max-w-md"
+              >
+                Custom Practice
+              </button>
             </div>
           </div>
         ) : currentView === 'assessment' || currentView === 'lesson' ? (
@@ -697,7 +540,7 @@ ${(course as PracticeLesson).scene.description}`}
                          const { lesson: newLesson, conversation_history } = response.data;
                          setLesson(newLesson);
                          setMessages(conversation_history || []);
-                         setCurrentView('assessment');
+                         setCurrentView('lesson');
                        } catch (error) {
                          console.error('Error creating lesson:', error);
                        } finally {

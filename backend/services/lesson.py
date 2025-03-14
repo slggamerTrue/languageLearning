@@ -68,7 +68,7 @@ class LessonService:
             4. 建议的复习重点
             5. 下一步学习建议"""
 
-            response = await openai.ChatCompletion.acreate(
+            response = await self.llm_service.chat_completion(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "你是一个专业的英语教师，正在为学生提供课后反馈。"},
@@ -76,7 +76,7 @@ class LessonService:
                 ]
             )
 
-            return eval(response.choices[0].message.content)
+            return response["content"]
 
         except Exception as e:
             raise Exception(f"Lesson summary generation failed: {str(e)}")
@@ -125,43 +125,54 @@ class LessonService:
             # 构建系统提示
             system_prompt = None
             if lesson_content["mode"] == LessonMode.STUDY.value:
-                system_prompt = f"""You are an experienced English tutor helping students learn English.
-            Today's topic: {lesson_content["topic"]}
-            Assessment day: {lesson_content["assessment_day"]}
+                system_prompt = f"""You are an experienced English tutor helping students learn English. 课程内容如下：
+            {lesson_content}
             
-            你需要结合下面对话的内容，来一步一步的引导学生完成本次课程的内容。
-            返回需要两个字段,display_text和speech_text：
-            speech_text字段就是按对话，老师讲课的内容或者对学生问题的回答，注意保持本次课程的连贯性，如果被打断了要注意回到课程内容上继续讲解。
-            如有需要，比如展示一页slide，一份菜单，为方便讲解显示的一段文字等，在display_text字段以markdown格式显示，如无需要则置为空字符串即可。如果课程内容完成并确认了学生的学习效果，则输入<end_of_lesson>。
+            你需要结合上面的内容和已有的对话，来一步一步的引导学生完成本次课程的内容。
+
+            Important guidelines:
+            1. 返回以json格式需要两个字段,display_text和speech_text：
+            speech_text字段: 格式为字符串数组，教师说话的内容，按内容分为一句一句的，方便语音合成播放。
+            display_text字段: 如有需要，比如展示一页slide，一份菜单，为方便讲解显示的一段文字等，在display_text字段以markdown格式显示，如无需要则置为空字符串即可。
+                             如果学习课程内容完成并确认了学生的学习效果，通过了practice的练习，则在display_text输出<end_of_lesson>。
+
+            2. 始终记得自己是一个英语教师，既要及时解答学生的疑问，也要基于下面的教学大纲来完成本课的内容。被打断了要记得及时回到课程内容上继续讲解。
+            上课的流程为：课程先讲解知识点，然后结合场景讲解一些具体的例子，最后再讲解总结。学生提问，老师解答，最后通过练习来确认学习效果。这是一个1v1的课程，所以讲解中和练习中也多问问学生实际遇到的场景来讲解，让学生更有参与感。
+
+            3.user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
+            前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。
+
+            返回格式只需要json格式，如下：
+            {{
+                "speech_text": string[],  # 必须的语音内容
+                "display_text": str  # 可选的展示内容，支持markdown格式
+            }}
             """
             else:  # PRACTICE mode
-                system_prompt = f"""You are in a role-playing scenario. Stay in character and respond naturally based on your role.
-            If the student uses Chinese or asks to use Chinese, respond in a way that naturally encourages English use while staying in character.
-            
-            Based on the following information to build the scenario.
-            Today's topic: {lesson_content["topic"]}
-            Lesson Info: {lesson_content["assessment_day"]} 
+                system_prompt = f"""You are in a role-playing scenario. Stay in character and respond naturally based on your role.        
+            Based on the following information to build the scenario. 总体基于略高于用户的当前水平来设计场景，添加一些突发事件来考察学生的应变能力。
+            {lesson_content}
 
             Important guidelines:
             1. For each response, provide two fields:
-               - display_text: 当需要展示菜单、列表等时才使用markdown格式显示，否则为空
-               - speech_text: A natural, conversational version suitable for speaking
+               - display_text: 当需要展示场景中需要用到的菜单、列表、文档等时才使用markdown格式显示，显示尽量详细，按照现实中的来否则为空
+               - speech_text: bot角色说话的内容，按内容分为一句一句的，方便语音合成播放。
             
             要求：
             1. 完全按照角色设定进行对话
             2. 不要做教学解释，除非学生特意要求
-            3. 如果user的英语表达有错误，不用纠正，继续对话即可
+            3. user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
+            前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。不用纠正，继续对话即可
             4. 保持对话的自然流畅
-            5. 如果user使用中文，以符合角色的方式鼓励使用英语
-            6. 注意对话中引导完成课程的进度，当评估学习效果已经达到时，display_text中输入<end_of_lesson>以结束课程
-                """
+            5. 如果user使用中文，用英语以符合角色的方式表达自己不太懂中文，让对方用英文简单描述。
+            6. 注意对话中引导完成设定的场景目标，display_text中输入<end_of_lesson>以结束课程
 
-            # 检查是否需要总结对话历史
-            if len(conversation_history) >= self.max_conversation_turns * 2:
-                summary = await self.summarize_conversation(conversation_history)
-                conversation_history = [
-                    {"role": "assistant", "content": f"之前对话总结：\n{summary}"}
-                ]
+            返回格式只需要json格式，如下：
+            {{
+                "speech_text": string[],  # 必须的语音内容
+                "display_text": str  # 可选的展示内容，支持markdown格式
+            }}
+                """
 
             # 处理用户消息
             if user_message is None and not conversation_history:
@@ -216,7 +227,7 @@ class LessonService:
             4. 下周学习建议
             5. 调整后的学习计划"""
 
-            response = await openai.ChatCompletion.acreate(
+            response = await self.llm_service.chat_completion(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "你是一个专业的英语教育顾问，正在为学生提供周度学习报告。"},
@@ -224,7 +235,7 @@ class LessonService:
                 ]
             )
 
-            return eval(response.choices[0].message.content)
+            return response["content"]
 
         except Exception as e:
             raise Exception(f"Weekly summary generation failed: {str(e)}")

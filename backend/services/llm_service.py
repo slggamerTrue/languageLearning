@@ -9,7 +9,6 @@ class LLMService:
         self.model = "pkqwen2.5-32b:latest"
         self.headers = {
             "Content-Type": "application/json",
-            
         }
 
     async def chat_completion(self, messages: List[Dict]) -> Dict:
@@ -45,38 +44,38 @@ class LLMService:
         进行结构化输出的对话
         """
         # 添加格式要求到系统提示
-        format_message = {
-            "role": "system",
-            "content": f'''
-要求的输出格式如下：
-{output_format}
+        if output_format is not None:
+            format_message = {
+                "role": "system",
+                "content": f'''
+    输出格式为json，具体如下：
+    {output_format}
 
-你必须遵守以下规则：
-1. 只输出纯 JSON 数据
-2. 不要包含任何注释或说明
-3. 不要使用 markdown 代码块
-4. 不要使用单引号，只使用双引号
-5. 数组和对象的最后一个元素后不要加逗号
-6. 确保输出可以直接被 JSON.parse() 解析
+    你必须遵守以下规则：
+    1. 只输出纯 JSON 数据
+    2. 不要包含任何注释或说明
+    3. 不要使用单引号，只使用双引号
+    4. 数组和对象的最后一个元素后不要加逗号
+    5. 确保输出可以直接被 JSON.parse() 解析
 
-示例：
-{{
-    "key": "value",
-    "array": [
-        "item1",
-        "item2"
-    ]
-}}
-或
-[
+    示例：
     {{
         "key": "value",
-        "array": ["item1", "item2"]
+        "array": [
+            "item1",
+            "item2"
+        ]
     }}
-]'''
-        }
-        
-        messages = [format_message] + messages
+    或
+    [
+        {{
+            "key": "value",
+            "array": ["item1", "item2"]
+        }}
+    ]'''
+            }
+            
+            messages = messages + [format_message]
         
         try:
 

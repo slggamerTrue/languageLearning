@@ -48,6 +48,12 @@ class CreateLessonRequest(BaseModel):
     topic: str
     assessment_day: Optional[Dict] = None
 
+class SummaryLessonRequest(BaseModel):
+    mode: Literal["study", "practice"]
+    lesson: Optional[Dict] = None
+    user: Optional[Dict] = None
+    conversation_history: Optional[List[Message]] = None
+
 class ChatRequest(BaseModel):
     lesson: Lesson
     conversation_history: List[Message] = Field(default_factory=list)
@@ -78,49 +84,48 @@ async def create_lesson(request: CreateLessonRequest):
             system_prompt = f"""You are in a role-playing scenario. Stay in character and respond naturally based on your role.
             If the student uses Chinese or asks to use Chinese, respond in a way that naturally encourages English use while staying in character.
             
-            Based on the following information to build a role-playing scenario.
-            Today's topic: {lesson.topic}
-            Lesson Info: {lesson.assessment_day} 
+            Based on the following information to build a role-playing scenario. 需要设定一个完成的目标保证这次的场景基于用户的水平有挑战性，同时增加一些随机事件保证每次的场景不一样。
+            {lesson}
             
             Important guidelines:
             1. For each response, provide two fields:
-               - display_text: 基于课程信息生成一个场景，对场景进行简单描述，并且分配bot和user的角色
-               - speech_text: 你作为bot，基于display_text中bot的角色，生成一个开场语，A natural, conversational version suitable for speaking
+               - display_text: 基于课程信息生成一个场景，对场景进行简单描述，并且分配bot和user的角色，显示本场景设定达到的目标以及所需的一些信息，场景描述需足够清晰，用markdown格式方便清晰的描述。
+               如是问路的场景，你甚至可以用markdown提供一个地图，设定一个当前位置和目的地，看用户能否正确指路。如是餐厅的场景，你可以提供带价格的菜单，看用户能否按要求(如必须含有2份主食，吃素，有忌口或者价格限定在多少范围内)搭配点餐
+               - speech_text: 你作为bot，基于display_text中bot的角色，生成一个开场语，为方便语音合成，分割为一句一句的。
             
-            3. Stay in character while:
+            2. Stay in character while:
                - Describing or presenting resources
                - Answering questions about the resources
                - Guiding the conversation naturally
-        
+
+            3. user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
+            前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。
+               
             """
         else:  # 学习模式
             system_prompt = f"""You are an experienced English tutor helping students learn English.
-            Today's topic: {lesson.topic}
-            Assessment day: {lesson.assessment_day}
+            基于今天的课程信息，你需要规划今天的课程大纲，并且生成一个开场语。
+            {lesson}
             
-            返回需要两个字段,display_text和speech_text：
-            display_text字段中，以markdown格式规划今天课程的大纲出来
-            需要包含下面几个部分：
-               - Introduction: 讲解今天课程主要内容
-               - Concept: Clear explanation of the learning point
-               - Examples: Simple, practical examples
-               - Practice: Interactive exercises
-               - Summary: Brief recap of key points
+            Important guidelines:
+            1. 返回需要两个字段,display_text和speech_text：
+            display_text字段中，以markdown格式规划今天课程的大纲出来，大纲要求较为详细，方便后面的对话参照该大纲控制流程。
+            speech_text字段中， 老师语音输出的内容，为便于语音合成，分割为一句一句的。
             
-            speech_text字段中， a natural, conversational introduction that sets up today's lesson.
+            2. 这是一个一对一的教学场景，所以你应该根据学生的水平，以及需要学习的内容制定大纲。
             """
         
         # 使用structured_chat生成带格式的欢迎语
         output_format = '''
+        返回格式只需要json格式，如下：
         {
-            "display_text": "string",
-            "speech_text": "string"  
+            "speech_text": string[],  # 必须的语音内容
+            "display_text": str  # 可选的展示内容，支持markdown格式
         }
         '''
         
         response = await lesson_service.llm_service.structured_chat(
-            messages=[{"role": "system", "content": system_prompt}],
-            output_format=output_format
+            messages=[{"role": "system", "content": system_prompt + output_format}]
         )
         
         display_text = response["display_text"]
@@ -187,5 +192,87 @@ async def chat(request: ChatRequest) -> ChatResponse:
         )
     except Exception as e:
         print(f"Chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.post("/summary")
+async def summary_lesson(request: SummaryLessonRequest):
+    """总体分析本次课程的对话，按评分规则给出结论"""
+    try:
+        
+        system_prompt = f"""你是一个英语教育专家，课程内容为
+        {request.lesson}
+
+        学生的基本信息为
+        {request.user}
+
+        本次课程的对话为,其中user表示用户的对话，assistant表示助手的回复，system表示系统的提示。user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
+        前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。
+        {request.conversation_history}
+
+        你需要基于这些内容，按评估系统，你需要确定学生本课的英语水平。
+# 评估系统 - 综合评分模型（基于 CEFR 级别）
+
+| **级别** | **词汇复杂度（Lexical Diversity）** | **语法正确性（Grammar Accuracy）** | **句子连贯性（Coherence & Cohesion）** | **任务完成度（Task Achievement）** |
+|------|--------------------------------|-------------------------------|--------------------------------|-------------------------------|
+| **A1 (Beginner)** | 使用基础词汇，常见单词，重复较多 | 语法错误较多，简单句为主 | 句子独立，少连接词 | 回答简单，缺乏细节 |
+| **A2 (Elementary)** | 使用基础词汇 + 一些短语 | 主要正确，偶尔错误 | 有少量连接词，如 "and", "but" | 回答较完整，但表达有限 |
+| **B1 (Intermediate)** | 词汇较多样，能使用同义替换 | 语法基本正确，开始使用从句 | 句子自然流畅，过渡词增加 | 回答完整，表达具体 |
+| **B2 (Upper-Intermediate)** | 使用高级词汇（同义替换、抽象词） | 语法准确，能使用复杂句 | 逻辑清晰，使用较多过渡词 | 回答全面，表达清楚，有细节支持 |
+| **C1 (Advanced)** | 词汇丰富，偶尔使用专业术语 | 语法准确，掌握高级结构（倒装、虚拟语气） | 句子结构复杂，逻辑严密 | 回答深入，有观点支撑，表达自然 |
+| **C2 (Proficient)** | 近母语水平，使用高级词汇、短语动词 | 语法几乎无错误，语法多样性高 | 文章级别连贯性，表达精确 | 观点清晰，表达精准，逻辑强 |
+
+## **示例**
+**问题**："Describe your last vacation."  
+✅ **A1 级别**："It was good. I liked it." ❌（回答简单，不完整）  
+✅ **B2 级别**："I traveled to Italy and visited Rome, Florence, and Venice. The architecture was breathtaking, and I enjoyed trying local pasta dishes." ✅（完整，表达清晰）
+
+        然后整理一份报告出来，学生哪些地方做的好，哪些地方做的不好，需要提出哪些建议，本次课程学习的效果如何。以markdown格式生成一份供用户查看的中文报告。
+        """
+        
+        response = await lesson_service.llm_service.chat_completion(
+            messages=[{"role": "system", "content": system_prompt}]
+        )
+        return response["content"]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.post("/detail_analysis")
+async def detail_analysis(request: SummaryLessonRequest):
+    """详细分析本次课程的每一句对话，提出问题"""
+    try:
+        
+        system_prompt = f"""你是一个英语教育专家，课程内容为
+        {request.lesson}
+
+        学生的基本信息为
+        {request.user}
+
+        本次课程的对话为,其中user表示用户的对话，assistant表示助手的回复，system表示系统的提示。user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
+        前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。
+        {request.conversation_history}
+
+        你需要逐句分析user的每一句话，从四个维度去分析，分析出用户的错误类型，然后给出建议。错误类型有：语法错误、词汇错误、句子连贯性错误、任务完成度错误。
+        按对话中user的句子顺序以下面的json格式返回
+        [{{
+ "sentence": string, //"user's raw message",
+ "errors": [
+       {{
+      "error_type": str, // "grammar" or "vocabulary" or "coherence" or "achievement" or "others",
+      "description": str, // description of the user's error and the correct form
+     }}
+    ],
+ "advices": string[] // "表达没错，但是换一种表达更好的建议，或者基于当前场景更常用的表达，没有可以为空"
+}}]
+
+            
+        """
+        
+        response = await lesson_service.llm_service.structured_chat(
+            messages=[{"role": "system", "content": system_prompt}]
+        )
+        return response
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

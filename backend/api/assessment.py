@@ -32,17 +32,31 @@ async def analyze_user_profile(
         return profile
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/generate-total-plan")
+async def generate_total_plan(
+    profile: Dict = Body(...)
+):
+    """
+    生成总体学习计划
+    """
+    try:
+        # 直接使用传入的用户档案生成学习计划
+        total_plan = await assessment_service.generate_total_plan(profile)
+        return total_plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/generate-weekly-plan")
 async def generate_weekly_plan(
-    profile: Dict = Body(...)
+    topic_with_profile: Dict = Body(...)
 ):
     """
     生成每周学习计划
     """
     try:
         # 直接使用传入的用户档案生成学习计划
-        weekly_plan = await assessment_service.generate_weekly_plan(profile)
+        weekly_plan = await assessment_service.generate_weekly_plan(topic_with_profile)
         return weekly_plan
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
