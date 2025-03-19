@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lesson API Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .api-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .api-title {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .input-area {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        .input-area textarea {
+            flex: 1;
+            min-height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .button-area {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .load-template {
+            background-color: #2196F3;
+        }
+        .load-template:hover {
+            background-color: #0b7dda;
+        }
+        .clear-btn {
+            background-color: #f44336;
+        }
+        .clear-btn:hover {
+            background-color: #d32f2f;
+        }
+        .response-area {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 2px solid #4CAF50;
+        }
+        .template-selector {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lesson API Tester</h1>
+    
+    <div class="tabs">
+        <div class="tab active" data-api="create">Create Lesson</div>
+        <div class="tab" data-api="chat">Chat</div>
+        <div class="tab" data-api="summary">Summary</div>
+        <div class="tab" data-api="detail-analysis">Detail Analysis</div>
+        <div class="tab" data-api="diagnose-chat">Diagnose Chat</div>
+    </div>
+    
+    <div class="api-section" id="create-section">
+        <h2 class="api-title">Create Lesson API</h2>
+        <div class="template-selector">
+            <select id="create-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Study Mode Template</option>
+                <option value="template2">Practice Mode Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="create-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('create')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('create')">Clear</button>
+            <button onclick="sendRequest('create')">Send Request</button>
+        </div>
+        <div class="loading" id="create-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="create-response"></div>
+    </div>
+    
+    <div class="api-section" id="chat-section" style="display: none;">
+        <h2 class="api-title">Chat API</h2>
+        <div class="template-selector">
+            <select id="chat-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Chat Template</option>
+                <option value="template2">Detailed Chat Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="chat-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('chat')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('chat')">Clear</button>
+            <button onclick="sendRequest('chat')">Send Request</button>
+        </div>
+        <div class="loading" id="chat-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="chat-response"></div>
+    </div>
+    
+    <div class="api-section" id="summary-section" style="display: none;">
+        <h2 class="api-title">Summary API</h2>
+        <div class="template-selector">
+            <select id="summary-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Summary Template</option>
+                <option value="template2">Detailed Summary Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="summary-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('summary')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('summary')">Clear</button>
+            <button onclick="sendRequest('summary')">Send Request</button>
+        </div>
+        <div class="loading" id="summary-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="summary-response"></div>
+    </div>
+    
+    <div class="api-section" id="detail-analysis-section" style="display: none;">
+        <h2 class="api-title">Detail Analysis API</h2>
+        <div class="template-selector">
+            <select id="detail-analysis-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Analysis Template</option>
+                <option value="template2">Detailed Analysis Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="detail-analysis-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('detail-analysis')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('detail-analysis')">Clear</button>
+            <button onclick="sendRequest('detail-analysis')">Send Request</button>
+        </div>
+        <div class="loading" id="detail-analysis-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="detail-analysis-response"></div>
+    </div>
+    
+    <div class="api-section" id="diagnose-chat-section" style="display: none;">
+        <h2 class="api-title">Diagnose Chat API</h2>
+        <div class="template-selector">
+            <select id="diagnose-chat-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Chat Diagnosis Template</option>
+                <option value="template2">Detailed Chat Diagnosis Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="diagnose-chat-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('diagnose-chat')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('diagnose-chat')">Clear</button>
+            <button onclick="sendRequest('diagnose-chat')">Send Request</button>
+        </div>
+        <div class="loading" id="diagnose-chat-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="diagnose-chat-response"></div>
+    </div>
+
+    <script>
+        // Template data
+        const templates = {
+            'create': {
+                'template1': {
+                    "mode": "study",
+                    "topic": "Basic Greetings and Introductions",
+                    "assessment_day": {
+                        "day_number": 1,
+                        "topic": "Greetings and Self-Introduction",
+                        "scenarios": [
+                            {
+                                "title": "Meeting New People",
+                                "content": "First-time introductions in casual or professional settings"
+                            }
+                        ],
+                        "knowledge_points": [
+                            {
+                                "name": "Basic greetings",
+                                "level": 1,
+                                "examples": [
+                                    "Hello, my name is...",
+                                    "Nice to meet you.",
+                                    "How are you today?"
+                                ]
+                            }
+                        ],
+                        "estimated_time": 30
+                    }
+                },
+                'template2': {
+                    "mode": "practice",
+                    "topic": "Ordering Food at a Restaurant",
+                    "assessment_day": {
+                        "day_number": 3,
+                        "topic": "Restaurant Conversations",
+                        "scenarios": [
+                            {
+                                "title": "Casual Dining",
+                                "content": "Ordering food and drinks at a casual restaurant"
+                            }
+                        ],
+                        "knowledge_points": [
+                            {
+                                "name": "Food vocabulary",
+                                "level": 2,
+                                "examples": [
+                                    "I'd like to order...",
+                                    "Could I have the menu, please?",
+                                    "What do you recommend?"
+                                ]
+                            }
+                        ],
+                        "estimated_time": 45
+                    }
+                }
+            },
+            'chat': {
+                'template1': {
+                    "lesson": {
+                        "mode": "study",
+                        "topic": "Basic Greetings and Introductions",
+                        "assessment_day": {
+                            "day_number": 1,
+                            "topic": "Greetings and Self-Introduction"
+                        }
+                    },
+                    "conversation_history": [
+                        {
+                            "role": "assistant",
+                            "content": "Hello! Today we'll be learning about basic greetings and introductions.",
+                            "speech_text": ["Hello!", "Today we'll be learning about basic greetings and introductions."],
+                            "display_text": "# Today's Lesson: Basic Greetings and Introductions\n\n- Learn common greetings\n- Practice self-introductions\n- Use polite expressions"
+                        }
+                    ],
+                    "user_input": "[voice] Hello, my name is John."
+                },
+                'template2': {
+                    "lesson": {
+                        "mode": "practice",
+                        "topic": "Ordering Food at a Restaurant",
+                        "assessment_day": {
+                            "day_number": 3,
+                            "topic": "Restaurant Conversations"
+                        }
+                    },
+                    "conversation_history": [
+                        {
+                            "role": "assistant",
+                            "content": "Welcome to our restaurant! I'll be your server today. Would you like to see our menu?",
+                            "speech_text": ["Welcome to our restaurant!", "I'll be your server today.", "Would you like to see our menu?"],
+                            "display_text": "# Restaurant Scenario\n\n**Your role**: Customer\n**My role**: Server\n\n**Menu:**\n- Appetizers: Salad ($5), Soup ($4)\n- Main Course: Steak ($15), Pasta ($12), Fish ($14)\n- Drinks: Water (free), Soda ($2), Coffee ($3)"
+                        }
+                    ],
+                    "user_input": "[voice] Yes, I would like to see the menu please."
+                }
+            },
+            'summary': {
+                'template1': {
+                    "mode": "study",
+                    "lesson": {
+                        "mode": "study",
+                        "topic": "Basic Greetings and Introductions",
+                        "assessment_day": {
+                            "day_number": 1,
+                            "topic": "Greetings and Self-Introduction"
+                        }
+                    },
+                    "user": {
+                        "english_level": "A2",
+                        "learning_goals": ["basic conversations", "self-introduction"]
+                    },
+                    "conversation_history": [
+                        {
+                            "role": "assistant",
+                            "content": "Hello! Today we'll be learning about basic greetings and introductions.",
+                            "speech_text": ["Hello!", "Today we'll be learning about basic greetings and introductions."],
+                            "display_text": "# Today's Lesson: Basic Greetings and Introductions\n\n- Learn common greetings\n- Practice self-introductions\n- Use polite expressions"
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] Hello, my name is John."
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Nice to meet you, John! Can you tell me a bit about yourself?",
+                            "speech_text": ["Nice to meet you, John!", "Can you tell me a bit about yourself?"],
+                            "display_text": ""
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] I am 30 years old. I work in IT company."
+                        }
+                    ]
+                },
+                'template2': {
+                    "mode": "practice",
+                    "lesson": {
+                        "mode": "practice",
+                        "topic": "Ordering Food at a Restaurant",
+                        "assessment_day": {
+                            "day_number": 3,
+                            "topic": "Restaurant Conversations"
+                        }
+                    },
+                    "user": {
+                        "english_level": "B1",
+                        "learning_goals": ["daily conversations", "ordering food"]
+                    },
+                    "conversation_history": [
+                        {
+                            "role": "assistant",
+                            "content": "Welcome to our restaurant! I'll be your server today. Would you like to see our menu?",
+                            "speech_text": ["Welcome to our restaurant!", "I'll be your server today.", "Would you like to see our menu?"],
+                            "display_text": "# Restaurant Scenario\n\n**Your role**: Customer\n**My role**: Server\n\n**Menu:**\n- Appetizers: Salad ($5), Soup ($4)\n- Main Course: Steak ($15), Pasta ($12), Fish ($14)\n- Drinks: Water (free), Soda ($2), Coffee ($3)"
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] Yes, I would like to see the menu please."
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Here's our menu. Today's special is the grilled salmon with vegetables. Would you like to order a drink while you decide?",
+                            "speech_text": ["Here's our menu.", "Today's special is the grilled salmon with vegetables.", "Would you like to order a drink while you decide?"],
+                            "display_text": ""
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] I will have water, please. And I think I want the steak with salad."
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Water and steak with salad. Excellent choice! How would you like your steak cooked?",
+                            "speech_text": ["Water and steak with salad.", "Excellent choice!", "How would you like your steak cooked?"],
+                            "display_text": ""
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] Medium rare, please."
+                        }
+                    ]
+                }
+            },
+            'detail-analysis': {
+                'template1': {
+                    "mode": "study",
+                    "lesson": {
+                        "mode": "study",
+                        "topic": "Basic Greetings and Introductions",
+                        "assessment_day": {
+                            "day_number": 1,
+                            "topic": "Greetings and Self-Introduction"
+                        }
+                    },
+                    "user": {
+                        "english_level": "A2",
+                        "learning_goals": ["basic conversations", "self-introduction"]
+                    },
+                    "conversation_history": [
+                        {
+                            "role": "assistant",
+                            "content": "Hello! Today we'll be learning about basic greetings and introductions.",
+                            "speech_text": ["Hello!", "Today we'll be learning about basic greetings and introductions."],
+                            "display_text": "# Today's Lesson: Basic Greetings and Introductions\n\n- Learn common greetings\n- Practice self-introductions\n- Use polite expressions"
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] Hello, my name is John."
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Nice to meet you, John! Can you tell me a bit about yourself?",
+                            "speech_text": ["Nice to meet you, John!", "Can you tell me a bit about yourself?"],
+                            "display_text": ""
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] I am 30 years old. I work in IT company."
+                        }
+                    ]
+                },
+                'template2': {
+                    "mode": "practice",
+                    "lesson": {
+                        "mode": "practice",
+                        "topic": "Ordering Food at a Restaurant",
+                        "assessment_day": {
+                            "day_number": 3,
+                            "topic": "Restaurant Conversations"
+                        }
+                    },
+                    "user": {
+                        "english_level": "B1",
+                        "learning_goals": ["daily conversations", "ordering food"]
+                    },
+                    "conversation_history": [
+                        {
+                            "role": "assistant",
+                            "content": "Welcome to our restaurant! I'll be your server today. Would you like to see our menu?",
+                            "speech_text": ["Welcome to our restaurant!", "I'll be your server today.", "Would you like to see our menu?"],
+                            "display_text": "# Restaurant Scenario\n\n**Your role**: Customer\n**My role**: Server\n\n**Menu:**\n- Appetizers: Salad ($5), Soup ($4)\n- Main Course: Steak ($15), Pasta ($12), Fish ($14)\n- Drinks: Water (free), Soda ($2), Coffee ($3)"
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] Yes, I would like to see the menu please."
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Here's our menu. Today's special is the grilled salmon with vegetables. Would you like to order a drink while you decide?",
+                            "speech_text": ["Here's our menu.", "Today's special is the grilled salmon with vegetables.", "Would you like to order a drink while you decide?"],
+                            "display_text": ""
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] I will have water, please. And I think I want the steak with salad."
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Water and steak with salad. Excellent choice! How would you like your steak cooked?",
+                            "speech_text": ["Water and steak with salad.", "Excellent choice!", "How would you like your steak cooked?"],
+                            "display_text": ""
+                        },
+                        {
+                            "role": "user",
+                            "content": "[voice] Medium rare, please."
+                        }
+                    ]
+                }
+            },
+            'diagnose-chat': {
+                'template1': [
+                    {
+                        "role": "user",
+                        "content": "I goed to the store yesterday and buyed some food."
+                    }
+                ],
+                'template2': [
+                    {
+                        "role": "user",
+                        "content": "I am work in a big company for five years. My job is very interesting but sometimes I am tired."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "That's interesting! What kind of work do you do at your company?"
+                    },
+                    {
+                        "role": "user",
+                        "content": "I am software engineer. I make computer programs and fix problems."
+                    }
+                ]
+            }
+        };
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const api = this.getAttribute('data-api');
+                
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show corresponding section
+                document.querySelectorAll('.api-section').forEach(section => {
+                    section.style.display = 'none';
+                });
+                document.getElementById(`${api}-section`).style.display = 'block';
+            });
+        });
+
+        // Load template function
+        function loadTemplate(api) {
+            const select = document.getElementById(`${api}-template`);
+            const templateKey = select.value;
+            if (!templateKey) return;
+            
+            const template = templates[api][templateKey];
+            document.getElementById(`${api}-input`).value = JSON.stringify(template, null, 2);
+        }
+
+        // Clear input function
+        function clearInput(api) {
+            document.getElementById(`${api}-input`).value = '';
+            document.getElementById(`${api}-response`).textContent = '';
+        }
+
+        // Send request function
+        async function sendRequest(api) {
+            const inputElement = document.getElementById(`${api}-input`);
+            const responseElement = document.getElementById(`${api}-response`);
+            const loadingElement = document.getElementById(`${api}-loading`);
+            
+            try {
+                // Show loading
+                loadingElement.style.display = 'block';
+                responseElement.textContent = '';
+                
+                // Parse input JSON
+                const requestBody = JSON.parse(inputElement.value);
+                
+                // Adjust API endpoint
+                let endpoint = api;
+                if (api === 'detail-analysis') {
+                    endpoint = 'detail_analysis';
+                }
+                
+                // Send request
+                const response = await fetch(`/api/lesson/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                // Parse response
+                const data = await response.json();
+                
+                // Display response
+                responseElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseElement.textContent = `Error: ${error.message}`;
+            } finally {
+                // Hide loading
+                loadingElement.style.display = 'none';
+            }
+        }
+
+        // Initialize with default templates
+        window.onload = function() {
+            // Set initial templates
+            document.getElementById('create-input').value = JSON.stringify(templates['create']['template1'], null, 2);
+            document.getElementById('chat-input').value = JSON.stringify(templates['chat']['template1'], null, 2);
+            document.getElementById('summary-input').value = JSON.stringify(templates['summary']['template1'], null, 2);
+            document.getElementById('detail-analysis-input').value = JSON.stringify(templates['detail-analysis']['template1'], null, 2);
+            document.getElementById('diagnose-chat-input').value = JSON.stringify(templates['diagnose-chat']['template1'], null, 2);
+        };
+    </script>
+</body>
+</html>

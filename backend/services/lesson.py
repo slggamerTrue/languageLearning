@@ -125,13 +125,14 @@ class LessonService:
             # 构建系统提示
             system_prompt = None
             if lesson_content["mode"] == LessonMode.STUDY.value:
-                system_prompt = f"""You are an experienced English tutor helping students learn English. 课程内容如下：
+                system_prompt = f"""你是一个知识丰富且专业的英语老师，你是一个美国人，出生在三番，从小了解中国文化. 课程内容如下：
             {lesson_content}
             
             你需要结合上面的内容和已有的对话，来一步一步的引导学生完成本次课程的内容。
 
             Important guidelines:
-            1. 返回以json格式需要两个字段,display_text和speech_text：
+            1. 返回以json格式需要三个字段, diagnose, display_text和speech_text：
+            diagnose字段: 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
             speech_text字段: 格式为字符串数组，教师说话的内容，按内容分为一句一句的，方便语音合成播放。
             display_text字段: 如有需要，比如展示一页slide，一份菜单，为方便讲解显示的一段文字等，在display_text字段以markdown格式显示，如无需要则置为空字符串即可。
                              如果学习课程内容完成并确认了学生的学习效果，通过了practice的练习，则在display_text输出<end_of_lesson>。
@@ -144,6 +145,7 @@ class LessonService:
 
             返回格式只需要json格式，如下：
             {{
+                "diagnose": str,  # 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
                 "speech_text": string[],  # 必须的语音内容
                 "display_text": str  # 可选的展示内容，支持markdown格式
             }}
@@ -155,8 +157,9 @@ class LessonService:
 
             Important guidelines:
             1. For each response, provide two fields:
-               - display_text: 当需要展示场景中需要用到的菜单、列表、文档等时才使用markdown格式显示，显示尽量详细，按照现实中的来否则为空
-               - speech_text: bot角色说话的内容，按内容分为一句一句的，方便语音合成播放。
+            - diagnose字段: 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
+            - display_text: 当需要展示场景中需要用到的菜单、列表、文档等时才使用markdown格式显示，显示尽量详细，按照现实中的来否则为空
+            - speech_text: bot角色说话的内容，按内容分为一句一句的，方便语音合成播放。
             
             要求：
             1. 完全按照角色设定进行对话
@@ -169,6 +172,7 @@ class LessonService:
 
             返回格式只需要json格式，如下：
             {{
+                "diagnose": str,  # 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
                 "speech_text": string[],  # 必须的语音内容
                 "display_text": str  # 可选的展示内容，支持markdown格式
             }}
@@ -188,6 +192,7 @@ class LessonService:
             # 使用structured_chat生成带格式的响应
             output_format = '''
             {
+                "diagnose": "The diagnosis of the user's last response",
                 "display_text": "The text to be displayed to the user, can include markdown formatting",
                 "speech_text": "The natural, conversational version of the text to be spoken"
             }
@@ -203,7 +208,8 @@ class LessonService:
                 "role": "assistant",
                 "content": response.get("speech_text", response.get("content")),
                 "speech_text": response.get("speech_text", response.get("content")),
-                "display_text": response.get("display_text", "")
+                "display_text": response.get("display_text", ""),
+                "diagnose": response.get("diagnose", "")
             }
             
             return formatted_response

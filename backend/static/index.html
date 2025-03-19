@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI English Tutor API Testers</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .card-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            width: 45%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .card a {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .card a:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI English Tutor API Testers</h1>
+    
+    <div class="card-container">
+        <div class="card">
+            <h2>Assessment API Tester</h2>
+            <p>Test the assessment-related APIs including initial-chat, analyze-profile, generate-total-plan, and generate-weekly-plan.</p>
+            <a href="/static/assessment_tester.html">Open Assessment Tester</a>
+        </div>
+        
+        <div class="card">
+            <h2>Lesson API Tester</h2>
+            <p>Test the lesson-related APIs including create, chat, summary, detail-analysis, and diagnose-chat.</p>
+            <a href="/static/lesson_tester.html">Open Lesson Tester</a>
+        </div>
+    </div>
+</body>
+</html>

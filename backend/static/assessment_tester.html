@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment API Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .api-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .api-title {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .input-area {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        .input-area textarea {
+            flex: 1;
+            min-height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .button-area {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .load-template {
+            background-color: #2196F3;
+        }
+        .load-template:hover {
+            background-color: #0b7dda;
+        }
+        .clear-btn {
+            background-color: #f44336;
+        }
+        .clear-btn:hover {
+            background-color: #d32f2f;
+        }
+        .response-area {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 2px solid #4CAF50;
+        }
+        .template-selector {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Assessment API Tester</h1>
+    
+    <div class="tabs">
+        <div class="tab active" data-api="initial-chat">Initial Chat</div>
+        <div class="tab" data-api="analyze-profile">Analyze Profile</div>
+        <div class="tab" data-api="generate-total-plan">Generate Total Plan</div>
+        <div class="tab" data-api="generate-weekly-plan">Generate Weekly Plan</div>
+    </div>
+    
+    <div class="api-section" id="initial-chat-section">
+        <h2 class="api-title">Initial Chat API</h2>
+        <div class="template-selector">
+            <select id="initial-chat-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Conversation Template</option>
+                <option value="template2">Advanced Conversation Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="initial-chat-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('initial-chat')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('initial-chat')">Clear</button>
+            <button onclick="sendRequest('initial-chat')">Send Request</button>
+        </div>
+        <div class="loading" id="initial-chat-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="initial-chat-response"></div>
+    </div>
+    
+    <div class="api-section" id="analyze-profile-section" style="display: none;">
+        <h2 class="api-title">Analyze Profile API</h2>
+        <div class="template-selector">
+            <select id="analyze-profile-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Conversation Analysis Template</option>
+                <option value="template2">Detailed Conversation Analysis Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="analyze-profile-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('analyze-profile')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('analyze-profile')">Clear</button>
+            <button onclick="sendRequest('analyze-profile')">Send Request</button>
+        </div>
+        <div class="loading" id="analyze-profile-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="analyze-profile-response"></div>
+    </div>
+    
+    <div class="api-section" id="generate-total-plan-section" style="display: none;">
+        <h2 class="api-title">Generate Total Plan API</h2>
+        <div class="template-selector">
+            <select id="generate-total-plan-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Profile Template</option>
+                <option value="template2">Detailed Profile Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="generate-total-plan-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('generate-total-plan')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('generate-total-plan')">Clear</button>
+            <button onclick="sendRequest('generate-total-plan')">Send Request</button>
+        </div>
+        <div class="loading" id="generate-total-plan-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="generate-total-plan-response"></div>
+    </div>
+    
+    <div class="api-section" id="generate-weekly-plan-section" style="display: none;">
+        <h2 class="api-title">Generate Weekly Plan API</h2>
+        <div class="template-selector">
+            <select id="generate-weekly-plan-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic Weekly Plan Template</option>
+                <option value="template2">Detailed Weekly Plan Template</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="generate-weekly-plan-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('generate-weekly-plan')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('generate-weekly-plan')">Clear</button>
+            <button onclick="sendRequest('generate-weekly-plan')">Send Request</button>
+        </div>
+        <div class="loading" id="generate-weekly-plan-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="generate-weekly-plan-response"></div>
+    </div>
+
+    <script>
+        // Template data
+        const templates = {
+            'initial-chat': {
+                'template1': [
+                    {
+                        "role": "user",
+                        "content": "Hi, I want to improve my English."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Hello! It's great that you want to improve your English. My name is Polly, and I'm here to help you on your language learning journey. Can you tell me a bit about yourself? For example, what's your name, and have you studied English before?"
+                    },
+                    {
+                        "role": "user",
+                        "content": "My name is John. I studied English in school but haven't used it much since then."
+                    }
+                ],
+                'template2': [
+                    {
+                        "role": "user",
+                        "content": "你好，我想提高我的英语水平。"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "你好！很高兴你想提高英语水平。我是Polly，很乐意帮助你学习英语。能否用英语做个简单的自我介绍呢？比如你的名字，以及你学习英语的经历？"
+                    },
+                    {
+                        "role": "user",
+                        "content": "My name is Sarah. I learned English in school for about 6 years, but that was a long time ago. I need to improve my English for my job in IT."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Nice to meet you, Sarah! It's common to need to refresh language skills after not using them for a while. You mentioned you work in IT and need English for your job. Could you tell me more about what specific situations you need English for at work? For example, do you need to join meetings, write emails, or read technical documentation?"
+                    },
+                    {
+                        "role": "user",
+                        "content": "I need to join international meetings and sometimes write emails to clients. I also need to read technical documentation in English."
+                    }
+                ]
+            },
+            'analyze-profile': {
+                'template1': [
+                    {
+                        "role": "user",
+                        "content": "Hi, I want to improve my English."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Hello! It's great that you want to improve your English. My name is Polly, and I'm here to help you on your language learning journey. Can you tell me a bit about yourself? For example, what's your name, and have you studied English before?"
+                    },
+                    {
+                        "role": "user",
+                        "content": "My name is John. I studied English in school but haven't used it much since then."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Nice to meet you, John! It's common for language skills to get rusty when we don't use them regularly. May I ask what your goals are for improving your English? Is it for work, travel, or perhaps personal interest? <ASSESSMENT_COMPLETE>"
+                    }
+                ],
+                'template2': [
+                    {
+                        "role": "user",
+                        "content": "你好，我想提高我的英语水平。"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "你好！很高兴你想提高英语水平。我是Polly，很乐意帮助你学习英语。能否用英语做个简单的自我介绍呢？比如你的名字，以及你学习英语的经历？"
+                    },
+                    {
+                        "role": "user",
+                        "content": "My name is Sarah. I learned English in school for about 6 years, but that was a long time ago. I need to improve my English for my job in IT."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Nice to meet you, Sarah! It's common to need to refresh language skills after not using them for a while. You mentioned you work in IT and need English for your job. Could you tell me more about what specific situations you need English for at work? For example, do you need to join meetings, write emails, or read technical documentation?"
+                    },
+                    {
+                        "role": "user",
+                        "content": "I need to join international meetings and sometimes write emails to clients. I also need to read technical documentation in English."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Thank you for sharing that, Sarah. Those are common needs in international IT environments. For meetings, emails, and technical documentation, having a good grasp of professional vocabulary and clear communication skills is important. How much time do you think you can dedicate to studying English each day? Even 15-30 minutes of consistent practice can make a significant difference."
+                    },
+                    {
+                        "role": "user",
+                        "content": "I can probably spend about 30 minutes each day. I usually have some free time in the evening."
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "That's perfect, Sarah! 30 minutes daily is a great commitment that can lead to steady progress. Consistency is key in language learning. Besides your professional interests in IT, do you have any personal interests or hobbies? This could help us make your learning experience more enjoyable by incorporating topics you're passionate about. <ASSESSMENT_COMPLETE>"
+                    }
+                ]
+            },
+            'generate-total-plan': {
+                'template1': {
+                    "english_level": "B1",
+                    "english_name": "John",
+                    "chinese_name": "张三",
+                    "age": 28,
+                    "gender": "male",
+                    "career": "Software Engineer",
+                    "interests": ["watching movies", "playing basketball", "reading tech blogs"],
+                    "learning_goals": ["join international meetings", "write professional emails", "read technical documentation"],
+                    "study_time_per_day": 30
+                },
+                'template2': {
+                    "english_level": "A2",
+                    "english_name": "Sarah",
+                    "chinese_name": "李四",
+                    "age": 32,
+                    "gender": "female",
+                    "career": "Marketing Specialist",
+                    "interests": ["travel", "cooking", "photography", "watching TV series"],
+                    "learning_goals": ["basic travel conversations", "introduce products to international clients", "understand simple business documents"],
+                    "study_time_per_day": 45,
+                    "assessment_details": {
+                        "vocabulary": "Limited vocabulary related to daily life and basic work scenarios",
+                        "grammar": "Can form simple sentences but struggles with complex structures",
+                        "fluency": "Hesitant when speaking, needs time to formulate responses",
+                        "comprehension": "Can understand slow, clear speech on familiar topics"
+                    }
+                }
+            },
+            'generate-weekly-plan': {
+                'template1': {
+                    "english_level": "B1",
+                    "interests": ["watching movies", "playing basketball", "reading tech blogs"],
+                    "learning_goals": ["join international meetings", "write professional emails", "read technical documentation"],
+                    "study_time_per_day": 30,
+                    "current_week_plan": "Business Communication Basics",
+                    "last_assessment": "Needs to improve email writing skills and meeting vocabulary"
+                },
+                'template2': {
+                    "english_level": "A2",
+                    "interests": ["travel", "cooking", "photography", "watching TV series"],
+                    "learning_goals": ["basic travel conversations", "introduce products to international clients", "understand simple business documents"],
+                    "study_time_per_day": 45,
+                    "current_week_plan": "Travel English Essentials",
+                    "last_assessment": "Good progress with basic travel phrases, needs more practice with real-life conversations",
+                    "completed_phases": [
+                        {
+                            "phase_number": 1,
+                            "assessment": "Completed introduction to basic travel vocabulary",
+                            "progress": ["Learned 50 common travel phrases", "Can introduce self and ask basic questions"],
+                            "areas_to_improve": ["Listening comprehension", "Spontaneous speaking"]
+                        }
+                    ],
+                    "learning_progress": {
+                        "current_points": ["Airport vocabulary", "Hotel check-in phrases", "Restaurant ordering"],
+                        "mastered_points": {
+                            "Self introduction": 90,
+                            "Basic greetings": 95,
+                            "Numbers and time": 75,
+                            "Asking for directions": 60
+                        }
+                    }
+                }
+            }
+        };
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const api = this.getAttribute('data-api');
+                
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show corresponding section
+                document.querySelectorAll('.api-section').forEach(section => {
+                    section.style.display = 'none';
+                });
+                document.getElementById(`${api}-section`).style.display = 'block';
+            });
+        });
+
+        // Load template function
+        function loadTemplate(api) {
+            const select = document.getElementById(`${api}-template`);
+            const templateKey = select.value;
+            if (!templateKey) return;
+            
+            const template = templates[api][templateKey];
+            document.getElementById(`${api}-input`).value = JSON.stringify(template, null, 2);
+        }
+
+        // Clear input function
+        function clearInput(api) {
+            document.getElementById(`${api}-input`).value = '';
+            document.getElementById(`${api}-response`).textContent = '';
+        }
+
+        // Send request function
+        async function sendRequest(api) {
+            const inputElement = document.getElementById(`${api}-input`);
+            const responseElement = document.getElementById(`${api}-response`);
+            const loadingElement = document.getElementById(`${api}-loading`);
+            
+            try {
+                // Show loading
+                loadingElement.style.display = 'block';
+                responseElement.textContent = '';
+                
+                // Parse input JSON
+                const requestBody = JSON.parse(inputElement.value);
+                
+                // Send request
+                const response = await fetch(`/api/assessment/${api}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                // Parse response
+                const data = await response.json();
+                
+                // Display response
+                responseElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseElement.textContent = `Error: ${error.message}`;
+            } finally {
+                // Hide loading
+                loadingElement.style.display = 'none';
+            }
+        }
+
+        // Initialize with default templates
+        window.onload = function() {
+            // Set initial templates
+            document.getElementById('initial-chat-input').value = JSON.stringify(templates['initial-chat']['template1'], null, 2);
+            document.getElementById('analyze-profile-input').value = JSON.stringify(templates['analyze-profile']['template1'], null, 2);
+            document.getElementById('generate-total-plan-input').value = JSON.stringify(templates['generate-total-plan']['template1'], null, 2);
+            document.getElementById('generate-weekly-plan-input').value = JSON.stringify(templates['generate-weekly-plan']['template1'], null, 2);
+        };
+    </script>
+</body>
+</html>

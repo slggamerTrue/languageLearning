@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from api import lesson_api, assessment
 
@@ -20,6 +21,9 @@ app.add_middleware(
 # 注册路由
 app.include_router(lesson_api.router)
 app.include_router(assessment.router)
+
+# 挂载静态文件
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def root():

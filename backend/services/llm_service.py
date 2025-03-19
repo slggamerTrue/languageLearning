@@ -12,7 +12,7 @@ class LLMService:
             "Authorization": f"Bearer {os.getenv('PROMPTAI_API_KEY')}"
         }
 
-    async def chat_completion(self, messages: List[Dict]) -> Dict:
+    async def chat_completion(self, messages: List[Dict], model: Optional[str] = None) -> Dict:
         """
         调用 Ollama API 进行对话
         """
@@ -20,7 +20,7 @@ class LLMService:
             ssl_context = aiohttp.TCPConnector(verify_ssl=False)
             async with aiohttp.ClientSession(connector=ssl_context) as session:
                 payload = {
-                    "model": self.model,
+                    "model": model or self.model,
                     "messages": messages,
                     "stream": False
                 }
@@ -40,7 +40,7 @@ class LLMService:
         except Exception as e:
             raise Exception(f"Chat completion failed: {str(e)}")
 
-    async def structured_chat(self, messages: List[Dict], output_format: Optional[str] = None) -> Dict:
+    async def structured_chat(self, messages: List[Dict], output_format: Optional[str] = None, model: Optional[str] = None) -> Dict:
         """
         进行结构化输出的对话
         """
@@ -80,7 +80,7 @@ class LLMService:
         
         try:
 
-            response = await self.chat_completion(messages)
+            response = await self.chat_completion(messages, model)
             content = response["content"]
             
             print("\n=== API 响应内容 ===\n")

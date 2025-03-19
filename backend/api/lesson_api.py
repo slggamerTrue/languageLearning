@@ -135,7 +135,7 @@ async def create_lesson(request: CreateLessonRequest):
         initial_conversation = [
             Message(
                 role="assistant",
-                content="".join(map(str, display_text)),  # Use speech_text as the base content
+                content="".join(map(str, speech_text)),  # Use speech_text as the base content
                 display_text=display_text,
                 speech_text=speech_text
             )
@@ -233,7 +233,7 @@ async def summary_lesson(request: SummaryLessonRequest):
         """
         
         response = await lesson_service.llm_service.chat_completion(
-            messages=[{"role": "system", "content": system_prompt}]
+            messages=[{"role": "system", "content": system_prompt}], model="pkqwq:latest"
         )
         return response["content"]
     except Exception as e:
@@ -277,4 +277,35 @@ async def detail_analysis(request: SummaryLessonRequest):
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/diagnose-chat")
+async def diagnose_chat(messages: List[Dict]):
+    """
+    评估对话中的错误
+    """
+    try:
+        system_message = {
+            "role": "system",
+            "content": """你是一个专业的英语教师，正在与学生进行交谈。你需要根据user最近的对话内容，分析是否存在一些错误，如无错误则返回空数组。
+
+返回格式只需要json格式，如下：
+{
+    "diagnose": [{
+        "type": str,  # 错误类型Grammar, Vocabulary, Structure, Context
+        "description": str,  # 错误描述，引号引用原文，并用中文描述错误原因
+        "correct": str  # 正确的英文表达
+    }],
+}
+"""
+        }
+        
+        all_messages = [system_message] + messages
+        #return await lesson_service.llm_service.chat_completion(all_messages)
+        response = await lesson_service.llm_service.structured_chat(all_messages)
+
+        return response
+
+    except Exception as e:
+        raise Exception(f"Assessment failed: {str(e)}")
+
 

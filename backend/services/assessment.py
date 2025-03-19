@@ -21,50 +21,43 @@ class AssessmentService:
 3. 有没有一个deadline的时间节点
 4. 学生的兴趣爱好（至少一个具体的例子）
 5. 学生的个人信息如英语名(如没有则建议用户取一个)，性别，年龄，职业等
-并且在通过闲聊中学生的答复评估学生的英文水平。
-1. 学生的英语水平，英语水平分为4个维度，词汇量，语法准确性，句子连贯性，任务完成度
-# 综合评分模型（基于 CEFR 级别）
+并且在通过闲聊中学生的答复评估学生的英文水平。学生的英语水平从4个维度考察，词汇量，语法准确性，句子连贯性，任务完成度
 
-| **级别** | **词汇复杂度（Lexical Diversity）** | **语法正确性（Grammar Accuracy）** | **句子连贯性（Coherence & Cohesion）** | **任务完成度（Task Achievement）** |
-|------|--------------------------------|-------------------------------|--------------------------------|-------------------------------|
-| **A1 (Beginner)** | 使用基础词汇，常见单词，重复较多 | 语法错误较多，简单句为主 | 句子独立，少连接词 | 回答简单，缺乏细节 |
-| **A2 (Elementary)** | 使用基础词汇 + 一些短语 | 主要正确，偶尔错误 | 有少量连接词，如 "and", "but" | 回答较完整，但表达有限 |
-| **B1 (Intermediate)** | 词汇较多样，能使用同义替换 | 语法基本正确，开始使用从句 | 句子自然流畅，过渡词增加 | 回答完整，表达具体 |
-| **B2 (Upper-Intermediate)** | 使用高级词汇（同义替换、抽象词） | 语法准确，能使用复杂句 | 逻辑清晰，使用较多过渡词 | 回答全面，表达清楚，有细节支持 |
-| **C1 (Advanced)** | 词汇丰富，偶尔使用专业术语 | 语法准确，掌握高级结构（倒装、虚拟语气） | 句子结构复杂，逻辑严密 | 回答深入，有观点支撑，表达自然 |
-| **C2 (Proficient)** | 近母语水平，使用高级词汇、短语动词 | 语法几乎无错误，语法多样性高 | 文章级别连贯性，表达精确 | 观点清晰，表达精准，逻辑强 |
-
-## 评分方法**
-1. 计算 **每个维度的得分**（0-10 分）。
-2. 取 **综合平均值** 对比 **CEFR 评分标准**，给出最终等级。
-3. 生成 **个性化反馈**（如："Try using more linking words like 'however' or 'therefore'."）
-
-## **📌 示例**
-**问题**："Describe your last vacation."  
-✅ **A1 级别**："It was good. I liked it." ❌（回答简单，不完整）  
-✅ **B2 级别**："I traveled to Italy and visited Rome, Florence, and Venice. The architecture was breathtaking, and I enjoyed trying local pasta dishes." ✅（完整，表达清晰）
-
----
 
 你需要遵守以下规则：
-1. 不要一次性问太多问题，每次只问 1-2 个问题，最好是通过闲聊的方式，不要让人觉得一直在问问题。
-2. 先了解学生的英语水平，可以从具体场景入手，比如先问问学生的具体情况，学过英语吗，日常使用等
+1. 不要一次性问太多问题，每次只问 1-2 个问题，最好是通过闲聊的方式，不要让人觉得一直在问问题。根据用户的英语水平动态调整表达方式。
+2. 先了解学生的英语水平，比如先让学生用英语尝试做个自我介绍，不光能收集信息，还能了解学生的英语水平。
 3. 如果学生用英语回答，就用英语交流；如果学生用中文，可以用中文引导学生使用英语，这样你才能更好的了解用户实际英语水平
 4. 当学生英文表达和理解实在有困难时，可以用中文进行辅助解释，同时也就明确了用户实际英文水平为none。
 5. 保持专业和友好的态度
 
-只有当你收集到以下所有信息后，才能在回复中包含 <ASSESSMENT_COMPLETE> 标记：
+只有当你收集到以下所有信息或者用户明确表示不想提供这些信息后，才能在回复中包含 <ASSESSMENT_COMPLETE> 标记：
 1. 能够确定学生的英语水平(4个维度)
 2. 学生说明了具体的学习目标
 3. 学生提供了每日可用于学习的时间
 4. 学生的基本信息
 
-好的，现在你是PollyTalk的专业英语老师，跟学生打个招呼吧。
+返回格式只需要json格式，如下：
+{
+    "speech_text": string[],  # 格式为字符串数组，教师说话的内容，按内容分为一句一句的，方便语音合成播放。
+    "display_text": str  # 收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记
+}
 """
             }
             
             all_messages = [system_message] + messages
-            return await self.llm.chat_completion(all_messages)
+            #return await self.llm.chat_completion(all_messages)
+            response = await self.llm.structured_chat(all_messages)
+            content = "".join(response.get("speech_text", response.get("content")))
+            # 解析JSON响应
+            formatted_response = {
+                "role": "assistant",
+                "content": content,
+                "speech_text": response.get("speech_text", response.get("content")),
+                "display_text": response.get("display_text", ""),
+                "diagnose": response.get("diagnose", "")
+            }
+            return formatted_response
 
         except Exception as e:
             raise Exception(f"Assessment failed: {str(e)}")
@@ -272,24 +265,18 @@ class AssessmentService:
                 3. 每日投入的学习时间
                 4. 一般学习曲线和进度
                 
-                请返回一个预计所需的周数（整数）。以及每周的学习内容，学习内容为一个字符串数组，字符串中描述每一周的目标和具体的学习内容，学习内容尽量按照实际场景，常用句式，单词为主'''
+                请以json格式返回，无需其他信息，包含一个预计所需的周数（整数）和
+                每周的学习内容，学习内容为一个字符串数组，字符串中描述每一周的目标和具体的学习内容，
+                学习内容尽量按照实际场景中会用到的常用句式，单词为主, 设定实际场景时尽量贴近实际且具备连贯性。将设定写在每周的学习内容中方便后续每周生成细节的学习内容时设定保持一致
+                格式如下
+                {{
+                "estimated_weeks": 2  # 示例：预计需要2周,
+                "weeks_plan":["",""] # 示例：写了两周的学习内容
+            }}
+                '''
             }
             
-            result = await self.llm.structured_chat([estimate_prompt], '''{
-                "estimated_weeks": 12  # 示例：预计需要12周,
-                "weeks_plan":["✅ 目标：掌握基础寒暄、介绍自己、简单指令，熟悉公司内部常见表达
-学习内容：
-寒暄（Hello, How are you? Nice to meet you.）
-自我介绍（I work as a [职位] at [公司]. My main job is to [职责].）
-基本请求（Can you help me with this? Could you send me the file?）
-日常短语（Let's have a meeting. I'll check and get back to you.）
-","✅ 目标：能够写简单的工作邮件、在 Slack/Teams 里用英文沟通
-学习内容：
-邮件常用开头（I hope this email finds you well.）
-邮件请求（Could you please send me…?）
-邮件结尾（Looking forward to your reply. Best regards.）
-Slack/Teams 简短对话（Got it! Sure, I’ll check. What do you think?）"] # 示例：写了两周的学习内容
-            }''')
+            result = await self.llm.structured_chat([estimate_prompt])
             result['start_date'] = datetime.now()
             return result 
             
@@ -414,7 +401,7 @@ Slack/Teams 简短对话（Got it! Sure, I’ll check. What do you think?）"] #
             ]
             '''
 
-            return await self.llm.structured_chat([plan_prompt], output_format)
+            return await self.llm.structured_chat([plan_prompt], output_format) #, model="pkqwq:latest"
 
         except Exception as e:
             raise Exception(f"Weekly plan generation failed: {str(e)}")
