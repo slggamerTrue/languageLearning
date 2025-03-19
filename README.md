@@ -62,9 +62,9 @@ ai-english-tutor/
 1. 后端设置
 ```bash
 cd backend
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 2. 前端设置

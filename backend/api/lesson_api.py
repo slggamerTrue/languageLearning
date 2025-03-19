@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, List, Literal
@@ -5,11 +6,11 @@ from services.lesson import LessonService, LessonMode
 
 router = APIRouter(prefix="/api/lesson", tags=["lesson"])
 lesson_service = LessonService()
-
+logger = logging.getLogger(__name__)
 class Message(BaseModel):
     role: Literal["system", "user", "assistant"]
     content: str
-    speech_text: Optional[str] = None  # 用于语音输出的纯文本版本
+    speech_text: Optional[List[str]] = None  # 用于语音输出的纯文本版本
     display_text: Optional[str] = None  # 用于展示的文本，支持markdown格式
 
 class SceneResource(BaseModel):
@@ -134,7 +135,7 @@ async def create_lesson(request: CreateLessonRequest):
         initial_conversation = [
             Message(
                 role="assistant",
-                content=speech_text,  # Use speech_text as the base content
+                content="".join(map(str, display_text)),  # Use speech_text as the base content
                 display_text=display_text,
                 speech_text=speech_text
             )
@@ -145,6 +146,7 @@ async def create_lesson(request: CreateLessonRequest):
             "conversation_history": initial_conversation
         }
     except Exception as e:
+        logger.error(f"Error creating lesson: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/chat")
@@ -173,13 +175,13 @@ async def chat(request: ChatRequest) -> ChatResponse:
             user_message=request.user_input,
             conversation_history=messages
         )
-        
-        # 创建用户消息和助手消息对象
-        #user_message_obj = Message(role="user", content=request.user_input)
+
+        content = "".join(response["content"])
+
         assistant_message = Message(
             role="assistant",
-            content=response["content"],
-            speech_text=response.get("speech_text", response["content"]),
+            content=content,
+            speech_text=response.get("speech_text"),
             display_text=response.get("display_text", "")
         )
         
@@ -187,11 +189,11 @@ async def chat(request: ChatRequest) -> ChatResponse:
         updated_history = request.conversation_history + [assistant_message]
         
         return ChatResponse(
-            content=response["content"],
+            content=content,
             conversation_history=updated_history
         )
     except Exception as e:
-        print(f"Chat error: {str(e)}")
+        logger.error(f"Chat error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     
 
