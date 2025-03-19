@@ -1,6 +1,6 @@
 import aiohttp
 import json
-from typing import List, Dict
+from typing import List, Dict, Optional
 import os
 
 class LLMService:
@@ -9,6 +9,7 @@ class LLMService:
         self.model = "pkqwen2.5-32b:latest"
         self.headers = {
             "Content-Type": "application/json",
+            "Authorization": f"Bearer {os.getenv('PROMPTAI_API_KEY')}"
         }
 
     async def chat_completion(self, messages: List[Dict]) -> Dict:
@@ -39,7 +40,7 @@ class LLMService:
         except Exception as e:
             raise Exception(f"Chat completion failed: {str(e)}")
 
-    async def structured_chat(self, messages: List[Dict], output_format: str) -> Dict:
+    async def structured_chat(self, messages: List[Dict], output_format: Optional[str] = None) -> Dict:
         """
         进行结构化输出的对话
         """
