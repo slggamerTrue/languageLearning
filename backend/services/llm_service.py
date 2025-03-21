@@ -5,8 +5,12 @@ import os
 
 class LLMService:
     def __init__(self):
-        self.base_url = "https://llm.promptai.cn/pk/api/chat"
-        self.model = "pkqwen2.5-32b:latest"
+        #self.base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        #self.model = "qwen-plus"
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+        self.model = "gemini-2.0-flash"
+        #self.base_url = "https://llm.promptai.cn/pk/api/chat"
+        #self.model = "pkqwen2.5-32b:latest"
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {os.getenv('PROMPTAI_API_KEY')}"
@@ -35,7 +39,8 @@ class LLMService:
                         raise Exception(f"API call failed: {error_text}")
                     
                     result = await response.json()
-                    return {"role": "assistant", "content": result["message"]["content"]}
+                    return {"role": "assistant", "content": result["choices"][0]["message"]["content"]}
+                    #return {"role": "assistant", "content": result["message"]["content"]}
 
         except Exception as e:
             raise Exception(f"Chat completion failed: {str(e)}")
@@ -48,32 +53,7 @@ class LLMService:
         if output_format is not None:
             format_message = {
                 "role": "system",
-                "content": f'''
-    输出格式为json，具体如下：
-    {output_format}
-
-    你必须遵守以下规则：
-    1. 只输出纯 JSON 数据
-    2. 不要包含任何注释或说明
-    3. 不要使用单引号，只使用双引号
-    4. 数组和对象的最后一个元素后不要加逗号
-    5. 确保输出可以直接被 JSON.parse() 解析
-
-    示例：
-    {{
-        "key": "value",
-        "array": [
-            "item1",
-            "item2"
-        ]
-    }}
-    或
-    [
-        {{
-            "key": "value",
-            "array": ["item1", "item2"]
-        }}
-    ]'''
+                "content": output_format
             }
             
             messages = messages + [format_message]
@@ -89,11 +69,6 @@ class LLMService:
             
             # 删除可能的代码块标记和空行
             content = content.replace('```json', '').replace('```', '')
-            
-            # 处理 <ASSESSMENT_COMPLETE> 标记
-            if "<ASSESSMENT_COMPLETE>" in content:
-                # 如果标记在 JSON 之前，直接删除它
-                content = content.replace("<ASSESSMENT_COMPLETE>", "")
             
             lines = [line.strip() for line in content.split('\n') if line.strip()]
             content = '\n'.join(lines)

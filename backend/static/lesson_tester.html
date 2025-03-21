@@ -181,6 +181,11 @@
             <button class="load-template" onclick="loadTemplate('chat')">Load Selected Template</button>
             <button class="clear-btn" onclick="clearInput('chat')">Clear</button>
             <button onclick="sendRequest('chat')">Send Request</button>
+            <button class="continue-chat-btn" onclick="continueLessonChat()" style="background-color: #9C27B0;">Continue Chat</button>
+        </div>
+        <div class="lesson-chat-input-area" style="margin-top: 15px; display: none;">
+            <input type="text" id="lesson-user-message" placeholder="Type your message here..." style="width: 80%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button onclick="sendLessonChatMessage()" style="margin-left: 10px;">Send</button>
         </div>
         <div class="loading" id="chat-loading">
             <div class="spinner"></div>
@@ -621,6 +626,11 @@
                 
                 // Display response
                 responseElement.textContent = JSON.stringify(data, null, 2);
+                
+                // If this is the chat API, store the last response for continuing the chat
+                if (api === 'chat') {
+                    window.lastLessonChatResponse = data;
+                }
             } catch (error) {
                 responseElement.textContent = `Error: ${error.message}`;
             } finally {
@@ -629,6 +639,126 @@
             }
         }
 
+        // Function to continue the lesson chat with previous response and new user input
+        function continueLessonChat() {
+            if (!window.lastLessonChatResponse) {
+                alert('Please send an initial chat request first');
+                return;
+            }
+            
+            // Show the chat input area
+            document.querySelector('.lesson-chat-input-area').style.display = 'flex';
+            document.getElementById('lesson-user-message').focus();
+            
+            // Log the current response for debugging
+            console.log('Current response:', window.lastLessonChatResponse);
+        }
+        
+        // Function to send a lesson chat message
+        async function sendLessonChatMessage() {
+            const userMessage = document.getElementById('lesson-user-message').value.trim();
+            if (!userMessage) return;
+            
+            try {
+                const inputElement = document.getElementById('chat-input');
+                const responseElement = document.getElementById('chat-response');
+                const loadingElement = document.getElementById('chat-loading');
+                
+                // Get current request body
+                let currentRequest = JSON.parse(inputElement.value);
+                
+                // Add the last assistant response if it exists and isn't already in the conversation history
+                if (window.lastLessonChatResponse) {
+                    // Create an assistant message from the last response
+                    const lastAssistantMessage = {
+                        role: 'assistant',
+                        content: window.lastLessonChatResponse.content || '',
+                        speech_text: window.lastLessonChatResponse.speech_text || [],
+                        display_text: window.lastLessonChatResponse.display_text || ''
+                    };
+                    
+                    // Check if the last response is already in the conversation history
+                    const lastResponseExists = currentRequest.conversation_history && 
+                                              currentRequest.conversation_history.some(msg => 
+                                                msg.role === 'assistant' && 
+                                                (msg.content === lastAssistantMessage.content ||
+                                                 (Array.isArray(msg.speech_text) && 
+                                                  Array.isArray(lastAssistantMessage.speech_text) && 
+                                                  JSON.stringify(msg.speech_text) === JSON.stringify(lastAssistantMessage.speech_text)))
+                                              );
+                    
+                    if (!lastResponseExists && currentRequest.conversation_history) {
+                        currentRequest.conversation_history.push(lastAssistantMessage);
+                    } else if (!currentRequest.conversation_history) {
+                        // If there's no conversation_history in the current request, initialize it
+                        currentRequest.conversation_history = [lastAssistantMessage];
+                    }
+                }
+                
+                // Add the new user message
+                if (currentRequest.conversation_history) {
+                    currentRequest.conversation_history.push({
+                        role: 'user',
+                        content: userMessage
+                    });
+                } else {
+                    currentRequest.conversation_history = [{
+                        role: 'user',
+                        content: userMessage
+                    }];
+                }
+                
+                // Set the user_input field
+                currentRequest.user_input = userMessage;
+                
+                // Update the input textarea with the new request body
+                inputElement.value = JSON.stringify(currentRequest, null, 2);
+                
+                // Clear the message input
+                document.getElementById('lesson-user-message').value = '';
+                
+                // Show loading
+                loadingElement.style.display = 'block';
+                responseElement.textContent = '';
+                
+                // Send request
+                const response = await fetch('/api/lesson/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: inputElement.value
+                });
+                
+                // Parse response
+                const data = await response.json();
+                
+                // Display response
+                responseElement.textContent = JSON.stringify(data, null, 2);
+                
+                // Store the last response
+                window.lastLessonChatResponse = data;
+                
+            } catch (error) {
+                document.getElementById('chat-response').textContent = `Error: ${error.message}`;
+            } finally {
+                // Hide loading
+                document.getElementById('chat-loading').style.display = 'none';
+            }
+        }
+        
+        // Add event listener for Enter key in the lesson chat input
+        document.addEventListener('DOMContentLoaded', function() {
+            const lessonUserMessageInput = document.getElementById('lesson-user-message');
+            if (lessonUserMessageInput) {
+                lessonUserMessageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendLessonChatMessage();
+                    }
+                });
+            }
+        });
+        
         // Initialize with default templates
         window.onload = function() {
             // Set initial templates
@@ -637,6 +767,9 @@
             document.getElementById('summary-input').value = JSON.stringify(templates['summary']['template1'], null, 2);
             document.getElementById('detail-analysis-input').value = JSON.stringify(templates['detail-analysis']['template1'], null, 2);
             document.getElementById('diagnose-chat-input').value = JSON.stringify(templates['diagnose-chat']['template1'], null, 2);
+            
+            // Initialize lastLessonChatResponse
+            window.lastLessonChatResponse = null;
         };
     </script>
 </body>

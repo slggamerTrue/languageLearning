@@ -156,6 +156,11 @@
             <button class="load-template" onclick="loadTemplate('initial-chat')">Load Selected Template</button>
             <button class="clear-btn" onclick="clearInput('initial-chat')">Clear</button>
             <button onclick="sendRequest('initial-chat')">Send Request</button>
+            <button class="continue-chat-btn" onclick="continueChat()" style="background-color: #9C27B0;">Continue Chat</button>
+        </div>
+        <div class="chat-input-area" style="margin-top: 15px; display: none;">
+            <input type="text" id="user-message" placeholder="Type your message here..." style="width: 80%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button onclick="sendChatMessage()" style="margin-left: 10px;">Send</button>
         </div>
         <div class="loading" id="initial-chat-loading">
             <div class="spinner"></div>
@@ -459,6 +464,11 @@
                 
                 // Display response
                 responseElement.textContent = JSON.stringify(data, null, 2);
+                
+                // If this is the initial-chat API, store the last response for continuing the chat
+                if (api === 'initial-chat') {
+                    window.lastChatResponse = data;
+                }
             } catch (error) {
                 responseElement.textContent = `Error: ${error.message}`;
             } finally {
@@ -467,6 +477,101 @@
             }
         }
 
+        // Function to continue the chat with previous response and new user input
+        function continueChat() {
+            if (!window.lastChatResponse) {
+                alert('Please send an initial request first');
+                return;
+            }
+            
+            // Show the chat input area
+            document.querySelector('.chat-input-area').style.display = 'flex';
+            document.getElementById('user-message').focus();
+        }
+        
+        // Function to send a chat message
+        async function sendChatMessage() {
+            const userMessage = document.getElementById('user-message').value.trim();
+            if (!userMessage) return;
+            
+            try {
+                const inputElement = document.getElementById('initial-chat-input');
+                const responseElement = document.getElementById('initial-chat-response');
+                const loadingElement = document.getElementById('initial-chat-loading');
+                
+                // Get current conversation history
+                let currentConversation = JSON.parse(inputElement.value);
+                
+                // Add the last assistant response if it exists and isn't already in the conversation
+                if (window.lastChatResponse && window.lastChatResponse.role === 'assistant') {
+                    // Check if the last response is already in the conversation
+                    const lastResponseExists = currentConversation.some(msg => 
+                        msg.role === 'assistant' && 
+                        msg.content === window.lastChatResponse.content
+                    );
+                    
+                    if (!lastResponseExists) {
+                        currentConversation.push({
+                            role: 'assistant',
+                            content: window.lastChatResponse.content,
+                            speech_text: window.lastChatResponse.speech_text,
+                            display_text: window.lastChatResponse.display_text
+                        });
+                    }
+                }
+                
+                // Add the new user message
+                currentConversation.push({
+                    role: 'user',
+                    content: userMessage
+                });
+                
+                // Update the input textarea with the new conversation
+                inputElement.value = JSON.stringify(currentConversation, null, 2);
+                
+                // Clear the message input
+                document.getElementById('user-message').value = '';
+                
+                // Show loading
+                loadingElement.style.display = 'block';
+                responseElement.textContent = '';
+                
+                // Send request
+                const response = await fetch('/api/assessment/initial-chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: inputElement.value
+                });
+                
+                // Parse response
+                const data = await response.json();
+                
+                // Display response
+                responseElement.textContent = JSON.stringify(data, null, 2);
+                
+                // Store the last response
+                window.lastChatResponse = data;
+                
+            } catch (error) {
+                document.getElementById('initial-chat-response').textContent = `Error: ${error.message}`;
+            } finally {
+                // Hide loading
+                document.getElementById('initial-chat-loading').style.display = 'none';
+            }
+        }
+        
+        // Add event listener for Enter key in the chat input
+        document.addEventListener('DOMContentLoaded', function() {
+            const userMessageInput = document.getElementById('user-message');
+            userMessageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
+                }
+            });
+        });
+        
         // Initialize with default templates
         window.onload = function() {
             // Set initial templates
@@ -474,6 +579,9 @@
             document.getElementById('analyze-profile-input').value = JSON.stringify(templates['analyze-profile']['template1'], null, 2);
             document.getElementById('generate-total-plan-input').value = JSON.stringify(templates['generate-total-plan']['template1'], null, 2);
             document.getElementById('generate-weekly-plan-input').value = JSON.stringify(templates['generate-weekly-plan']['template1'], null, 2);
+            
+            // Initialize lastChatResponse
+            window.lastChatResponse = null;
         };
     </script>
 </body>

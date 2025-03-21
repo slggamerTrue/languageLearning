@@ -128,7 +128,8 @@ class LessonService:
                 system_prompt = f"""你是一个知识丰富且专业的英语老师，你是一个美国人，出生在三番，从小了解中国文化. 课程内容如下：
             {lesson_content}
             
-            你需要结合上面的内容和已有的对话，来一步一步的引导学生完成本次课程的内容。
+            你需要结合上面的内容和已有的对话，来一步一步的引导学生完成本次课程的内容。由于涉及到讲解知识，有些内容可能较长，
+            生成的对话应该是等待user发言的位置，而不是话没说完就结束。你可以考虑增加些需要学生反馈的问题，以避免一次生成太长的内容。
 
             Important guidelines:
             1. 返回以json格式需要三个字段, diagnose, display_text和speech_text：
@@ -145,8 +146,12 @@ class LessonService:
 
             返回格式只需要json格式，如下：
             {{
-                "diagnose": str,  # 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
-                "speech_text": string[],  # 必须的语音内容
+                "diagnose": [{{ # 根据user最近的一句对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
+                    "type": str,  # 错误类型Grammar, Vocabulary, Structure, Context
+                    "description": str,  # 错误描述，引号引用原文，并用中文描述错误原因
+                    "correct": str  # 正确的英文表达
+                }}],
+                "speech_text": string[],  # 必须的语音内容,按内容分为一句一句的，方便语音合成播放。
                 "display_text": str  # 可选的展示内容，支持markdown格式
             }}
             """
@@ -166,18 +171,34 @@ class LessonService:
             2. 不要做教学解释，除非学生特意要求
             3. user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
             前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。不用纠正，继续对话即可
-            4. 保持对话的自然流畅
+            4. 生成的话应该是等待user发言，而不是话没说完就结束
             5. 如果user使用中文，用英语以符合角色的方式表达自己不太懂中文，让对方用英文简单描述。
             6. 注意对话中引导完成设定的场景目标，display_text中输入<end_of_lesson>以结束课程
 
             返回格式只需要json格式，如下：
             {{
-                "diagnose": str,  # 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
-                "speech_text": string[],  # 必须的语音内容
+                "diagnose": [{{ # 根据user最近的一句对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
+        "type": str,  # 错误类型Grammar, Vocabulary, Structure, Context
+        "description": str,  # 错误描述，引号引用原文，并用中文描述错误原因
+        "correct": str  # 正确的英文表达
+                }}],
+                "speech_text": string[],  # 必须的语音内容,按内容分为一句一句的，方便语音合成播放。
                 "display_text": str  # 可选的展示内容，支持markdown格式
             }}
                 """
 
+            output_format = """
+            为方便程序处理返回格式必须为有效的json格式，如下：
+            {
+                "diagnose": [{ # 根据user最近的一句对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
+        "type": str,  # 错误类型Grammar, Vocabulary, Structure, Context
+        "description": str,  # 错误描述，引号引用原文，并用中文描述错误原因
+        "correct": str  # 正确的英文表达
+                }],
+                "speech_text": string[],  # 必须的语音内容,按内容分为一句一句的，方便语音合成播放。
+                "display_text": str  # 可选的展示内容，支持markdown格式
+            }
+            """
             # 处理用户消息
             if user_message is None and not conversation_history:
                 conversation_history = [
@@ -186,21 +207,19 @@ class LessonService:
 
             # 在调用 structured_chat 前，将 system_prompt 添加到 conversation_history 的开头
             messages_with_system = conversation_history.copy()
+            # 循环messages_with_system将speech_text删除
+            for message in messages_with_system:
+                if "speech_text" in message:
+                    del message["speech_text"]
+                if "diagnose" in message:
+                    del message["diagnose"]
+
             if system_prompt:
                 messages_with_system.insert(0, {"role": "system", "content": system_prompt})
 
-            # 使用structured_chat生成带格式的响应
-            output_format = '''
-            {
-                "diagnose": "The diagnosis of the user's last response",
-                "display_text": "The text to be displayed to the user, can include markdown formatting",
-                "speech_text": "The natural, conversational version of the text to be spoken"
-            }
-            '''
             
             response = await self.llm_service.structured_chat(
-                messages=messages_with_system,
-                output_format=output_format
+                messages=messages_with_system, output_format=output_format
             )
             
             # 解析JSON响应

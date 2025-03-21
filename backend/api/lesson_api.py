@@ -30,8 +30,7 @@ class SceneConfig(BaseModel):
 
 class Lesson(BaseModel):
     mode: str
-    topic: str
-    assessment_day: Optional[Dict] = None
+    lesson_info: Optional[Dict] = None
 
 class LessonContent(BaseModel):
     text: str  # 普通文本内容
@@ -46,8 +45,7 @@ class LessonStep(BaseModel):
 
 class CreateLessonRequest(BaseModel):
     mode: Literal["study", "practice"]
-    topic: str
-    assessment_day: Optional[Dict] = None
+    lesson_info: Optional[Dict] = None
 
 class SummaryLessonRequest(BaseModel):
     mode: Literal["study", "practice"]
@@ -60,9 +58,6 @@ class ChatRequest(BaseModel):
     conversation_history: List[Message] = Field(default_factory=list)
     user_input: str
 
-class ChatResponse(BaseModel):
-    content: str
-    conversation_history: List[Message]
 
 @router.post("/create")
 async def create_lesson(request: CreateLessonRequest):
@@ -70,14 +65,8 @@ async def create_lesson(request: CreateLessonRequest):
     try:
         mode = LessonMode.STUDY if request.mode == "study" else LessonMode.PRACTICE
         
-        if not request.assessment_day:
-            raise HTTPException(status_code=400, detail="requires assessment_day data")
-            
-        lesson = Lesson(
-            mode=mode.value,
-            topic=request.topic,
-            assessment_day=request.assessment_day
-        )
+        if not request.lesson_info:
+            raise HTTPException(status_code=400, detail="requires lesson_info data")
         
         # 生成系统提示和欢迎消息
         if mode == LessonMode.PRACTICE:  # 角色扮演模式
@@ -86,7 +75,7 @@ async def create_lesson(request: CreateLessonRequest):
             If the student uses Chinese or asks to use Chinese, respond in a way that naturally encourages English use while staying in character.
             
             Based on the following information to build a role-playing scenario. 需要设定一个完成的目标保证这次的场景基于用户的水平有挑战性，同时增加一些随机事件保证每次的场景不一样。
-            {lesson}
+            {request.lesson_info}
             
             Important guidelines:
             1. For each response, provide two fields:
@@ -105,8 +94,8 @@ async def create_lesson(request: CreateLessonRequest):
             """
         else:  # 学习模式
             system_prompt = f"""You are an experienced English tutor helping students learn English.
-            基于今天的课程信息，你需要规划今天的课程大纲，并且生成一个开场语。
-            {lesson}
+            基于下面的课程信息，你需要规划今天的课程大纲，并且生成一个开场语。
+            {request.lesson_info}
             
             Important guidelines:
             1. 返回需要两个字段,display_text和speech_text：
@@ -126,7 +115,7 @@ async def create_lesson(request: CreateLessonRequest):
         '''
         
         response = await lesson_service.llm_service.structured_chat(
-            messages=[{"role": "system", "content": system_prompt + output_format}]
+            messages=[{"role": "user", "content": system_prompt + output_format}]
         )
         
         display_text = response["display_text"]
@@ -142,7 +131,6 @@ async def create_lesson(request: CreateLessonRequest):
         ]
         
         return {
-            "lesson": lesson,
             "conversation_history": initial_conversation
         }
     except Exception as e:
@@ -150,14 +138,13 @@ async def create_lesson(request: CreateLessonRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/chat")
-async def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: ChatRequest):
     """进行对话交互，需要传入完整的课程信息和对话历史"""
     try:
-        # 验证请求数据
-        if not request.lesson or not request.user_input:
+        if not request.user_input:
             raise HTTPException(
                 status_code=400,
-                detail="Missing required fields: lesson or user_input"
+                detail="Missing required fields: user_input"
             )
         
         # 直接使用传入的lesson和conversation_history
@@ -176,22 +163,17 @@ async def chat(request: ChatRequest) -> ChatResponse:
             conversation_history=messages
         )
 
-        content = "".join(response["content"])
+        content = "".join(response.get("speech_text", response.get("content")))
 
-        assistant_message = Message(
-            role="assistant",
-            content=content,
-            speech_text=response.get("speech_text"),
-            display_text=response.get("display_text", "")
-        )
+        assistant_message = {
+            "role": "assistant",
+            "content": content,
+            "speech_text": response.get("speech_text"),
+            "display_text": response.get("display_text", ""),
+            "diagnose": response.get("diagnose", "")
+        }
         
-        # 更新对话历史
-        updated_history = request.conversation_history + [assistant_message]
-        
-        return ChatResponse(
-            content=content,
-            conversation_history=updated_history
-        )
+        return assistant_message
     except Exception as e:
         logger.error(f"Chat error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -230,10 +212,11 @@ async def summary_lesson(request: SummaryLessonRequest):
 ✅ **B2 级别**："I traveled to Italy and visited Rome, Florence, and Venice. The architecture was breathtaking, and I enjoyed trying local pasta dishes." ✅（完整，表达清晰）
 
         然后整理一份报告出来，学生哪些地方做的好，哪些地方做的不好，需要提出哪些建议，本次课程学习的效果如何。以markdown格式生成一份供用户查看的中文报告。
+        注意，输出为markdown格式，不要内容。
         """
         
         response = await lesson_service.llm_service.chat_completion(
-            messages=[{"role": "system", "content": system_prompt}], model="pkqwq:latest"
+            messages=[{"role": "user", "content": system_prompt}]  #, model="pkqwq:latest"
         )
         return response["content"]
     except Exception as e:
