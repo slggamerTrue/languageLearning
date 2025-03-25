@@ -49,15 +49,6 @@ class LLMService:
         """
         进行结构化输出的对话
         """
-        # 添加格式要求到系统提示
-        if output_format is not None:
-            format_message = {
-                "role": "system",
-                "content": output_format
-            }
-            
-            messages = messages + [format_message]
-        
         try:
 
             response = await self.chat_completion(messages, model)
@@ -141,6 +132,93 @@ class LLMService:
                 print(f"\n=== JSON 解析错误 ===\n")
                 print(f"Error: {str(e)}")
                 print()
+                
+                # 解析失败后，尝试重新生成
+                if output_format is not None:
+                    print("尝试重新生成符合格式要求的响应...")
+                    
+                    # 创建一个更明确的格式要求
+                    retry_message = {
+                        "role": "system",
+                        "content": f"之前的响应无法解析为有效的JSON。请严格按照以下格式要求重新生成响应，确保输出是有效的JSON格式，不要添加任何额外的文本、代码块标记或说明：\n\n{output_format}"
+                    }
+                    
+                    # 添加重试消息
+                    retry_messages = [messages[0]] + [{"role": "user", "content": "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages[1:]])}]
+                    
+                    try:
+                        # 重新调用API
+                        retry_response = await self.chat_completion(retry_messages, model)
+                        retry_content = retry_response["content"]
+                        
+                        print("\n=== 重试生成的内容 ===\n")
+                        print(retry_content)
+                        print()
+                        
+                        # 清理内容
+                        retry_content = retry_content.replace('```json', '').replace('```', '')
+                        lines = [line.strip() for line in retry_content.split('\n') if line.strip()]
+                        retry_content = '\n'.join(lines)
+                        
+                        # 尝试解析JSON
+                        array_start = retry_content.find('[')
+                        object_start = retry_content.find('{')
+                        
+                        if array_start != -1 and (object_start == -1 or array_start < object_start):
+                            start = array_start
+                        elif object_start != -1:
+                            start = object_start
+                        else:
+                            raise Exception("No valid JSON found in retry response")
+                            
+                        # 找到结束的花括号或方括号
+                        end = -1
+                        stack = []
+                        in_string = False
+                        escape = False
+                        
+                        for i, char in enumerate(retry_content[start:]):
+                            if char == '\\' and not escape:
+                                escape = True
+                                continue
+                            
+                            if char == '"' and not escape:
+                                in_string = not in_string
+                            
+                            if not in_string:
+                                if char in '{[':
+                                    stack.append(char)
+                                elif char in '}]':
+                                    if not stack:
+                                        print(f"Error: Found closing {char} but stack is empty")
+                                        break
+                                    if (char == '}' and stack[-1] == '{') or (char == ']' and stack[-1] == '['):
+                                        stack.pop()
+                                        if not stack:  # 找到匹配的结束括号
+                                            end = i + 1
+                                            break
+                                    else:
+                                        print(f"Error: Mismatched brackets. Found {char} but expected matching for {stack[-1]}")
+                            
+                            escape = False
+                        
+                        if end == -1:
+                            raise Exception("Could not find matching closing bracket in retry response")
+                        
+                        json_str = retry_content[start:start + end]
+                        retry_result = json.loads(json_str)
+                        
+                        # 如果结果是字符串，尝试解析为 JSON
+                        if isinstance(retry_result, str):
+                            retry_result = json.loads(retry_result)
+                        
+                        return retry_result
+                    except Exception as retry_e:
+                        print(f"\n=== 重试解析错误 ===\n")
+                        print(f"Error: {str(retry_e)}")
+                        print()
+                
+                # 如果重试也失败或没有输出格式要求，返回原始内容
                 return {"content": content}
             
         except json.JSONDecodeError as e:

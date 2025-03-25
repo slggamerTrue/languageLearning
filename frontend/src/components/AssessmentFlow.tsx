@@ -210,9 +210,9 @@ export const AssessmentFlow: React.FC<AssessmentFlowProps> = ({ onComplete, onCa
       const studyLesson = {
         mode: 'study',
         topic: `English Learning for ${userProfile.english_level.charAt(0).toUpperCase() + userProfile.english_level.slice(1)} Level`,
-        speech_text: `Welcome to your personalized English learning journey! Based on your ${userProfile.english_level} level and interests in ${userProfile.interests.join(', ')}, we've created a custom plan for you.`,
+        speechText: `Welcome to your personalized English learning journey! Based on your ${userProfile.english_level} level and interests in ${userProfile.interests.join(', ')}, we've created a custom plan for you.`,
         knowledge_points: firstDay.knowledge_points,
-        display_text: `# Your Personalized English Learning Plan\n\n## Based on Your Profile:\n- Level: ${userProfile.english_level}\n- Interests: ${userProfile.interests.join(', ')}\n- Goals: ${userProfile.learning_goals.join(', ')}\n- Daily study time: ${userProfile.study_time_per_day} minutes\n\n## This Week's Focus:\n${weeklyPlan.map((day: WeeklyPlanDay) => `### Day ${day.day_number}: ${day.topic}`).join('\n')}`,
+        displayText: `# Your Personalized English Learning Plan\n\n## Based on Your Profile:\n- Level: ${userProfile.english_level}\n- Interests: ${userProfile.interests.join(', ')}\n- Goals: ${userProfile.learning_goals.join(', ')}\n- Daily study time: ${userProfile.study_time_per_day} minutes\n\n## This Week's Focus:\n${weeklyPlan.map((day: WeeklyPlanDay) => `### Day ${day.day_number}: ${day.topic}`).join('\n')}`,
         materials: firstDay.materials,
         review_activities: firstDay.review_activities,
         estimated_time: firstDay.estimated_time

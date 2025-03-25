@@ -51,8 +51,8 @@ function App() {
     {
       mode: 'study',
       topic: 'Greetings and Introductions in the Workplace',
-      speech_text: 'Let me introduce you to basic workplace greetings and introductions...',
-      display_text: '# Workplace Greetings and Introductions\n\n## Key Points:\n- Basic greetings\n- Self-introduction\n- Professional etiquette',
+      speechText: 'Let me introduce you to basic workplace greetings and introductions...',
+      displayText: '# Workplace Greetings and Introductions\n\n## Key Points:\n- Basic greetings\n- Self-introduction\n- Professional etiquette',
       knowledge_points: [
         {
           name: 'Basic Greetings',
@@ -74,8 +74,8 @@ function App() {
     {
       mode: 'practice',
       topic: 'Greetings and Introductions in the Workplace',
-      speech_text: 'Now, let\'s practice introducing yourself in a professional setting...',
-      display_text: '# Practice Scenario\n\nYou are a new employee attending your first team meeting.\n\n## Key Phrases:\n- "Hello everyone, I\'m [name]"\n- "I\'m excited to join the team"',
+      speechText: 'Now, let\'s practice introducing yourself in a professional setting...',
+      displayText: '# Practice Scenario\n\nYou are a new employee attending your first team meeting.\n\n## Key Phrases:\n- "Hello everyone, I\'m [name]"\n- "I\'m excited to join the team"',
       scene: {
         description: 'First day at a new office',
         your_role: 'New employee',
@@ -90,8 +90,8 @@ function App() {
   const [practiceFormData, setPracticeFormData] = useState<PracticeLesson>({
     mode: 'practice',
     topic: '',
-    speech_text: '',
-    display_text: '',
+    speechText: '',
+    displayText: '',
     scene: {
       description: '',
       your_role: '',
@@ -194,16 +194,16 @@ function App() {
               materials: day.materials,
               review_activities: day.review_activities,
               estimated_time: day.estimated_time,
-              speech_text: `Welcome to Day ${day.day_number}: ${day.topic}`,
-              display_text: `# Day ${day.day_number}: ${day.topic}\n\n## Knowledge Points:\n${day.knowledge_points.map((kp: any) => `- ${kp.name}`).join('\n')}`
+              speechText: `Welcome to Day ${day.day_number}: ${day.topic}`,
+              displayText: `# Day ${day.day_number}: ${day.topic}\n\n## Knowledge Points:\n${day.knowledge_points.map((kp: any) => `- ${kp.name}`).join('\n')}`
             };
             
             // Create practice mode lesson with the same topic
             const practiceLesson: PracticeLesson = {
               mode: 'practice',
               topic: day.topic,
-              speech_text: `Let's practice what we learned about ${day.topic}`,
-              display_text: `# Practice: ${day.topic}\n\nLet's apply what we've learned in a real-world scenario.`,
+              speechText: `Let's practice what we learned about ${day.topic}`,
+              displayText: `# Practice: ${day.topic}\n\nLet's apply what we've learned in a real-world scenario.`,
               scene: {
                 description: `Practice scenario for ${day.topic}`,
                 your_role: 'English tutor',
@@ -241,8 +241,8 @@ function App() {
           const assistantMessage: Message = {
             role: 'assistant',
             content: response.data.content,
-            speech_text: response.data.speech_text || response.data.content,
-            display_text: response.data.display_text || response.data.content
+            speechText: response.data.speechText || response.data.content,
+            displayText: response.data.displayText || response.data.content
           };
           setMessages([...updatedMessages, assistantMessage]);
         }
@@ -253,8 +253,8 @@ function App() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: '抱歉，发生了一些错误，请稍后再试。',
-        display_text: '# 出错了\n\n抱歉，在处理您的消息时遇到了问题。请稍后重试。',
-        speech_text: '抱歉，发生了一些错误，请稍后再试。'
+        displayText: '# 出错了\n\n抱歉，在处理您的消息时遇到了问题。请稍后重试。',
+        speechText: '抱歉，发生了一些错误，请稍后再试。'
       }]);
     } finally {
       setIsLoading(false);
@@ -331,8 +331,8 @@ function App() {
                     const sampleLesson: StudyLesson = {
                       mode: 'study',
                       topic: studyCourse.topic,
-                      speech_text: `Let's start learning about ${studyCourse.topic}`,
-                      display_text: `# ${studyCourse.topic}\n\n## Today's Learning Points`,
+                      speechText: `Let's start learning about ${studyCourse.topic}`,
+                      displayText: `# ${studyCourse.topic}\n\n## Today's Learning Points`,
                       day_number: studyCourse.day_number,
                       materials: studyCourse.materials,
                       knowledge_points: studyCourse.knowledge_points,
@@ -364,7 +364,7 @@ function App() {
                              {
                                role: 'assistant' as const,
                                content: `欢迎来到《${course.topic}》课程！\n\n我正在为您准备课程内容，请稍候...`,
-                               display_text: `# ${course.topic}\n\n正在为您准备以下内容：\n${course.mode === 'study' 
+                               displayText: `# ${course.topic}\n\n正在为您准备以下内容：\n${course.mode === 'study' 
                                  ? `- ${(course as StudyLesson).knowledge_points.map(point => point.name).join('\n- ')}` 
                                  : `- ${(course as PracticeLesson).scene.description}`}\n\n请稍候...`
                              }
@@ -386,7 +386,7 @@ function App() {
                                setMessages(prev => [...prev, {
                                  role: 'assistant' as const,
                                  content: '抱歉，加载课程时出现错误。请返回课程列表重试。',
-                                 display_text: '# 出错了\n\n抱歉，在准备课程内容时遇到了问题。请点击返回按钮重试。'
+                                 displayText: '# 出错了\n\n抱歉，在准备课程内容时遇到了问题。请点击返回按钮重试。'
                                }]);
                              }
                            })();
@@ -589,13 +589,13 @@ function App() {
                           ? 'bg-gray-100 animate-pulse' 
                           : 'bg-gray-100'}`}
                     >
-                      {message.role === 'assistant' && message.display_text && (
+                      {message.role === 'assistant' && message.displayText && (
                         <div className="markdown-content prose dark:prose-invert max-w-none mb-2">
-                          <ReactMarkdown>{message.display_text}</ReactMarkdown>
+                          <ReactMarkdown>{message.displayText}</ReactMarkdown>
                         </div>
                       )}
                       <div className="whitespace-pre-wrap">
-                        {message.role === 'assistant' ? (message.speech_text || message.content) : message.content}
+                        {message.role === 'assistant' ? (message.speechText || message.content) : message.content}
                       </div>
                     </div>
                   </div>

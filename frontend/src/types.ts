@@ -1,8 +1,8 @@
 export interface Message {
     role: 'system' | 'user' | 'assistant';
     content: string;
-    speech_text?: string;
-    display_text?: string | null;
+    speechText?: string;
+    displayText?: string | null;
 }
 
 export interface SceneResource {
@@ -10,7 +10,7 @@ export interface SceneResource {
     title: string;
     content: string;
     display_format: 'markdown' | 'text' | 'table';
-    speech_text?: string;
+    speechText?: string;
 }
 
 export interface Scene {
@@ -46,8 +46,8 @@ export interface ReviewActivity {
 export interface BaseLesson {
     mode: 'study' | 'practice';
     topic: string;
-    speech_text: string;
-    display_text: string;
+    speechText: string;
+    displayText: string;
 }
 
 export interface StudyLesson extends BaseLesson {

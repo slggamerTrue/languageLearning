@@ -16,7 +16,7 @@ class AssessmentService:
                 "content": """
 --------Role-------------------
 你是一个专业的英语教师。你的工作内容是通过对话尝试收集以下信息，如果学生的对话中没有提供以上信息，你可以尝试引导学生提供。
-你的输出必须是一个有效的json格式，引导的对话内容放在speech_text字段。
+你的输出必须是一个有效的json格式，引导的对话内容放在speechText字段。
 
 -------Target-------------------
 1. user学习英语的目标，需要达到什么程度
@@ -27,14 +27,14 @@ class AssessmentService:
 1. 每次只问1个问题，根据用户的英语水平动态调整表达方式。
 2. 如果学生用英语回答，就用英语交流；如果学生用中文，可以用中文引导学生使用英语，这样你才能更好的了解用户实际英语水平
 3. 保持专业和友好的态度，尽量简短对话过程以完成信息的收集。
-4. 当你收集到所有目标信息或者用户明确表示不想提供这些信息后，在display_text字段中包含 <ASSESSMENT_COMPLETE> 标记：
+4. 当你收集到所有目标信息或者用户明确表示不想提供这些信息后，在displayText字段中包含 <ASSESSMENT_COMPLETE> 标记：
 5. 输出必须是一个有效的json，json格式为：
 {
-    "speech_text": string[], 
-    "display_text": str
+    "speechText": string[], 
+    "displayText": str
 }
-其中, speech_text字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组.
-display_text字符串，平时为空，收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记.
+其中, speechText字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组.
+displayText字符串，平时为空，收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记.
 
 """
             }
@@ -45,8 +45,8 @@ display_text字符串，平时为空，收集到足够信息后，输出<ASSESSM
 你是一个专业的英语教师，作为帮学生制定英语学习计划的第一步，你需要了解学生的基本情况，如英文名，性别，年龄，职业，兴趣爱好，
 以及学习目标，每日可学习的时间。不要总结收集到的信息，输出必须是一个有效的json，json格式为：
 {
-    "speech_text": string[],  # 字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组
-    "display_text": str  # 收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记
+    "speechText": string[],  # 字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组
+    "displayText": str  # 收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记
 }
 
 """
@@ -54,13 +54,13 @@ display_text字符串，平时为空，收集到足够信息后，输出<ASSESSM
             all_messages = [system_message] + messages
             #return await self.llm.chat_completion(all_messages)
             response = await self.llm.structured_chat(all_messages)
-            content = "".join(response.get("speech_text", response.get("content")))
+            content = "".join(response.get("speechText", response.get("content")))
             # 解析JSON响应
             formatted_response = {
                 "role": "assistant",
                 "content": content,
-                "speech_text": response.get("speech_text", response.get("content")),
-                "display_text": response.get("display_text", ""),
+                "speechText": response.get("speechText", response.get("content")),
+                "displayText": response.get("displayText", ""),
             }
             return formatted_response
 

@@ -10,15 +10,15 @@ logger = logging.getLogger(__name__)
 class Message(BaseModel):
     role: Literal["system", "user", "assistant"]
     content: str
-    speech_text: Optional[List[str]] = None  # 用于语音输出的纯文本版本
-    display_text: Optional[str] = None  # 用于展示的文本，支持markdown格式
+    speechText: Optional[List[str]] = None  # 用于语音输出的纯文本版本
+    displayText: Optional[str] = None  # 用于展示的文本，支持markdown格式
 
 class SceneResource(BaseModel):
     resource_type: Literal["menu", "document", "image", "list"]
     title: str
     content: str
     display_format: Literal["markdown", "text", "table"] = "text"
-    speech_text: Optional[str] = None  # 用于语音描述资源的文本
+    speechText: Optional[str] = None  # 用于语音描述资源的文本
 
 class SceneConfig(BaseModel):
     description: str
@@ -34,7 +34,7 @@ class Lesson(BaseModel):
 
 class LessonContent(BaseModel):
     text: str  # 普通文本内容
-    speech_text: Optional[str] = None  # 用于语音输出的版本
+    speechText: Optional[str] = None  # 用于语音输出的版本
     content_type: Literal["introduction", "concept", "example", "exercise", "summary"] = "concept"
     display_type: Literal["text", "list", "example", "exercise"] = "text"
 
@@ -79,9 +79,9 @@ async def create_lesson(request: CreateLessonRequest):
             
             Important guidelines:
             1. For each response, provide two fields:
-               - display_text: 基于课程信息生成一个场景，对场景进行简单描述，并且分配bot和user的角色，显示本场景设定达到的目标以及所需的一些信息，场景描述需足够清晰，用markdown格式方便清晰的描述。
+               - displayText: 基于课程信息生成一个场景，对场景进行简单描述，并且分配bot和user的角色，显示本场景设定达到的目标以及所需的一些信息，场景描述需足够清晰，用markdown格式方便清晰的描述。
                如是问路的场景，你甚至可以用markdown提供一个地图，设定一个当前位置和目的地，看用户能否正确指路。如是餐厅的场景，你可以提供带价格的菜单，看用户能否按要求(如必须含有2份主食，吃素，有忌口或者价格限定在多少范围内)搭配点餐
-               - speech_text: 你作为bot，基于display_text中bot的角色，生成一个开场语，为方便语音合成，分割为一句一句的。
+               - speechText: 你作为bot，基于displayText中bot的角色，生成一个开场语，为方便语音合成，分割为一句一句的。
             
             2. Stay in character while:
                - Describing or presenting resources
@@ -98,9 +98,9 @@ async def create_lesson(request: CreateLessonRequest):
             {request.lesson_info}
             
             Important guidelines:
-            1. 返回需要两个字段,display_text和speech_text：
-            display_text字段中，以markdown格式规划今天课程的大纲出来，大纲要求较为详细，方便后面的对话参照该大纲控制流程。
-            speech_text字段中， 老师语音输出的内容，为便于语音合成，分割为一句一句的。
+            1. 返回需要两个字段,displayText和speechText：
+            displayText字段中，以markdown格式规划今天课程的大纲出来，大纲要求较为详细，方便后面的对话参照该大纲控制流程。
+            speechText字段中， 老师语音输出的内容，为便于语音合成，分割为一句一句的。
             
             2. 这是一个一对一的教学场景，所以你应该根据学生的水平，以及需要学习的内容制定大纲。
             """
@@ -109,8 +109,8 @@ async def create_lesson(request: CreateLessonRequest):
         output_format = '''
         返回格式只需要json格式，如下：
         {
-            "speech_text": string[],  # 必须的语音内容
-            "display_text": str  # 可选的展示内容，支持markdown格式
+            "speechText": string[],  # 必须的语音内容
+            "displayText": str  # 可选的展示内容，支持markdown格式
         }
         '''
         
@@ -118,15 +118,15 @@ async def create_lesson(request: CreateLessonRequest):
             messages=[{"role": "user", "content": system_prompt + output_format}]
         )
         
-        display_text = response["display_text"]
-        speech_text = response["speech_text"]
+        displayText = response["displayText"]
+        speechText = response["speechText"]
         
         initial_conversation = [
             Message(
                 role="assistant",
-                content="".join(map(str, speech_text)),  # Use speech_text as the base content
-                display_text=display_text,
-                speech_text=speech_text
+                content="".join(map(str, speechText)),  # Use speechText as the base content
+                displayText=displayText,
+                speechText=speechText
             )
         ]
         
@@ -163,13 +163,13 @@ async def chat(request: ChatRequest):
             conversation_history=messages
         )
 
-        content = "".join(response.get("speech_text", response.get("content")))
+        content = "".join(response.get("speechText", response.get("content")))
 
         assistant_message = {
             "role": "assistant",
             "content": content,
-            "speech_text": response.get("speech_text"),
-            "display_text": response.get("display_text", ""),
+            "speechText": response.get("speechText"),
+            "displayText": response.get("displayText", ""),
             "diagnose": response.get("diagnose", "")
         }
         

@@ -12,11 +12,11 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
 
   return (
     <div className={`flex flex-col ${isAssistant ? 'items-start' : 'items-end'} w-full`}>
-      {/* 如果是助手消息且有display_text，显示在单独的容器中 */}
-      {isAssistant && message.display_text && (
+      {/* 如果是助手消息且有displayText，显示在单独的容器中 */}
+      {isAssistant && message.displayText && (
         <div className="w-full max-w-[90%] mb-6 bg-white rounded-xl p-6">
           <div className="markdown-content prose prose-headings:text-blue-900 prose-headings:font-bold prose-headings:mb-4 prose-p:text-gray-900 prose-p:text-base prose-p:leading-relaxed prose-li:text-gray-900 prose-blockquote:text-gray-500 prose-blockquote:border-l-blue-500 max-w-none space-y-4">
-            <ReactMarkdown>{message.display_text}</ReactMarkdown>
+            <ReactMarkdown>{message.displayText}</ReactMarkdown>
             {isWaiting && (
               <div className="flex items-center justify-center mt-4">
                 <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full mr-2"></div>
@@ -36,7 +36,7 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
           }`}
         >
           <div className="whitespace-pre-wrap">
-            {isAssistant ? message.speech_text || message.content : message.content}
+            {isAssistant ? message.speechText || message.content : message.content}
           </div>
         </div>
       )}
