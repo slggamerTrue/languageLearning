@@ -43,7 +43,7 @@ displayText字符串，平时为空，收集到足够信息后，输出<ASSESSME
                 "role": "system",
                 "content": """
 你是一个专业的英语教师，作为帮学生制定英语学习计划的第一步，你需要了解学生的基本情况，如英文名，性别，年龄，职业，兴趣爱好，
-以及学习目标，每日可学习的时间。不要总结收集到的信息，输出必须是一个有效的json，json格式为：
+以及学习目标，每日可学习的时间。收集过程中尽量鼓励用户使用英文，以方便通过他的回答了解他的英语水平。不要总结收集到的信息，输出必须是一个有效的json，json格式为：
 {
     "speechText": string[],  # 字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组
     "displayText": str  # 收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记
@@ -51,9 +51,9 @@ displayText字符串，平时为空，收集到足够信息后，输出<ASSESSME
 
 """
             }
-            all_messages = [system_message] + messages
+            messages_with_system = [system_message] + [{"role": "user", "content": "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])}]
             #return await self.llm.chat_completion(all_messages)
-            response = await self.llm.structured_chat(all_messages)
+            response = await self.llm.structured_chat(messages_with_system)
             content = "".join(response.get("speechText", response.get("content")))
             # 解析JSON响应
             formatted_response = {
