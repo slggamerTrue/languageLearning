@@ -15,7 +15,7 @@ class AssessmentService:
                 "role": "system",
                 "content": """
 --------Role-------------------
-你是一个专业的英语教师。你的工作内容是通过对话尝试收集以下信息，如果学生的对话中没有提供以上信息，你可以尝试引导学生提供。
+你是一个专业的英语教师。作为帮学生制定英语学习计划的第一步，你需要通过对话尝试收集以下信息，如果学生的对话中没有提供以上信息，你可以尝试引导学生提供。
 你的输出必须是一个有效的json格式，引导的对话内容放在speechText字段。
 
 -------Target-------------------
@@ -30,27 +30,25 @@ class AssessmentService:
 4. 当你收集到所有目标信息或者用户明确表示不想提供这些信息后，在displayText字段中包含 <ASSESSMENT_COMPLETE> 标记：
 5. 输出必须是一个有效的json，json格式为：
 {
-    "speechText": string[], 
-    "displayText": str
+    "speechText": string[], #speechText字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组.
+    "displayText": str #displayText字符串，平时为空，收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记.
 }
-其中, speechText字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组.
-displayText字符串，平时为空，收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记.
 
 """
             }
             
-            system_message = {
-                "role": "system",
-                "content": """
-你是一个专业的英语教师，作为帮学生制定英语学习计划的第一步，你需要了解学生的基本情况，如英文名，性别，年龄，职业，兴趣爱好，
-以及学习目标，每日可学习的时间。收集过程中尽量鼓励用户使用英文，以方便通过他的回答了解他的英语水平。不要总结收集到的信息，输出必须是一个有效的json，json格式为：
-{
-    "speechText": string[],  # 字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组
-    "displayText": str  # 收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记
-}
+#             system_message = {
+#                 "role": "system",
+#                 "content": """
+# 你是一个专业的英语教师，作为帮学生制定英语学习计划的第一步，你需要了解学生的基本情况，如英文名，性别，年龄，职业，兴趣爱好，
+# 以及学习目标，每日可学习的时间。收集过程中尽量鼓励用户使用英文，以方便通过他的回答了解他的英语水平。不要总结收集到的信息，输出必须是一个有效的json，json格式为：
+# {
+#     "speechText": string[],  # 字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组
+#     "displayText": str  # 收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记
+# }
 
-"""
-            }
+# """
+#            }
             messages_with_system = [system_message] + [{"role": "user", "content": "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])}]
             #return await self.llm.chat_completion(all_messages)
             response = await self.llm.structured_chat(messages_with_system)
@@ -157,7 +155,6 @@ displayText字符串，平时为空，收集到足够信息后，输出<ASSESSME
 {
     "user_profile": {
         "english_name": string, // 学生的英文名
-        "chinese_name": string, // 学生的中文名
         "age": number, // 学生的年龄，未提供则为 0
         "gender": string, // 学生的性别，取值为 "male" 或 "female"
         "career", string, //学生的职业
@@ -269,6 +266,7 @@ displayText字符串，平时为空，收集到足够信息后，输出<ASSESSME
                 2. 学习目标的难度和数量
                 3. 每日投入的学习时间
                 4. 一般学习曲线和进度
+                5. 最长制定4周的学习计划，每周按7天都学习来计算，如果需要学习的内容实在太多，则广度优先，深度次之。
                 
                 请以json格式返回，无需其他信息，包含一个预计所需的周数（整数）和
                 每周的学习内容，学习内容为一个字符串数组，字符串中描述每一周的目标和具体的学习内容，
@@ -326,30 +324,6 @@ displayText字符串，平时为空，收集到足够信息后，输出<ASSESSME
                     if mastery < 80:  # Points with mastery below 80% need review
                         review_points.append(point)
 
-            plan_prompt = {
-                "role": "user",
-                "content": f'''
-                As an experienced English teacher, please create a detailed and engaging study plan for this week. Focus on using authentic, memorable content that naturally demonstrates language points.
-
-                User Profile:
-                - English Level: {user_profile.get('english_level')}
-                - Interests: {', '.join(user_profile.get('interests', []))}
-                - Learning Goals: {', '.join(user_profile.get('learning_goals', []))}
-                - Daily Study Time: {user_profile.get('study_time_per_day')} minutes
-
-                Current Learning Status:
-                - Current Week plan: {user_profile.get('current_week_plan')}
-                - Last Assessment: {user_profile.get('last_assessment')}
-                
-                请根据以上信息，生成针对性的每日学习计划。学习计划可能是语法，句式，单词，短语，习语，语感，表达方式等，确保：
-                1. 针对周学习计划细分为日学习计划，每个学习计划设计实用的场景
-                2. 适当安排复习时间，学习上一周的内容
-                3. 控制每天的学习量符合用户时间安排，一课的知识点可以少安排点，多一些场景，让学生多练习。
-                4. 内容如有可能与用户兴趣相关最好，增加学习积极性
-                5. 如果是复习内容，设计新的情境和应用场景，避免简单重复
-                '''
-            }
-
             output_format = '''
             Generate a JSON array containing 7 daily lesson plans. Each day must be an object with these fields:
 
@@ -406,6 +380,34 @@ displayText字符串，平时为空，收集到足够信息后，输出<ASSESSME
             ]
             '''
 
+            plan_prompt = {
+                "role": "user",
+                "content": f'''
+                As an experienced English teacher, please create a detailed and engaging study plan for this week. Focus on using authentic, memorable content that naturally demonstrates language points.
+
+                User Profile:
+                - user_profile: {user_profile.get('user_profile')}
+                - English Level: {user_profile.get('english_level')}
+                - Interests: {', '.join(user_profile.get('interests', []))}
+                - Learning Goals: {', '.join(user_profile.get('learning_goals', []))}
+                - Daily Study Time: {user_profile.get('study_time_per_day')} minutes
+
+                Current Learning Status:
+                - Current Week plan: {user_profile.get('current_week_plan')}
+                - Last Assessment: {user_profile.get('last_assessment')}
+                
+                请根据以上信息，生成针对性的每日学习计划。学习计划可能是语法，句式，单词，短语，习语，语感，表达方式等，确保：
+                1. 针对周学习计划细分为日学习计划，每个学习计划设计实用的场景
+                2. 适当安排复习时间，学习上一周的内容
+                3. 控制每天的学习量符合用户时间安排，一课的知识点可以少安排点，多一些场景，让学生多练习。
+                4. 内容如有可能与用户兴趣相关最好，增加学习积极性
+                5. 如果是复习内容，设计新的情境和应用场景，避免简单重复
+                ''' + output_format
+            }
+
+            
+
+            # Pass the plan_prompt as a message, not inside a list
             return await self.llm.structured_chat([plan_prompt], output_format) #, model="pkqwq:latest"
 
         except Exception as e:

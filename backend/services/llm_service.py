@@ -23,7 +23,9 @@ class LLMService:
         """
         try:
             ssl_context = aiohttp.TCPConnector(verify_ssl=False)
-            async with aiohttp.ClientSession(connector=ssl_context) as session:
+            # Increase timeout to 120 seconds (2 minutes)
+            timeout = aiohttp.ClientTimeout(total=180)
+            async with aiohttp.ClientSession(connector=ssl_context, timeout=timeout) as session:
                 payload = {
                     "model": model or self.model,
                     "messages": messages,
@@ -138,14 +140,16 @@ class LLMService:
                 if output_format is not None:
                     print("尝试重新生成符合格式要求的响应...")
                     
-                    # 创建一个更明确的格式要求
-                    retry_message = {
-                        "role": "system",
-                        "content": f"之前的响应无法解析为有效的JSON。请严格按照以下格式要求重新生成响应，确保输出是有效的JSON格式，不要添加任何额外的文本、代码块标记或说明：\n\n{output_format}"
-                    }
-                    
                     # 添加重试消息
-                    retry_messages = [messages[0]] + [{"role": "user", "content": "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages[1:]])}]
+                    system_message = {
+                        "role": "system",
+                        "content": "之前的需求如下，但返回结果没有严格按照json格式要求返回，请将返回结果严格按照json格式要求返回：" + messages[0]["content"] if isinstance(messages[0], dict) else str(messages[0])
+                    }
+                    user_message = {
+                        "role": "user",
+                        "content": "上次返回的内容：" + content
+                    }
+                    retry_messages = [system_message, user_message]
                     
                     try:
                         # 重新调用API

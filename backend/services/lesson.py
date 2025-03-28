@@ -125,7 +125,7 @@ class LessonService:
             # 构建系统提示
             system_prompt = None
             if lesson_content["mode"] == LessonMode.STUDY.value:
-                system_prompt = f"""你是一个知识丰富且专业的英语老师，你是一个美国人，出生在三番，从小了解中国文化. 课程内容如下：
+                system_prompt = f"""你是一个知识丰富且专业的英语老师，你叫Polly，是一个美国人，出生在三番，从小了解中国文化. 课程内容如下：
             {lesson_content}
             
             你需要结合上面的内容和已有的对话，来一步一步的引导学生完成本次课程的内容。由于涉及到讲解知识，有些内容可能较长，
@@ -160,8 +160,9 @@ class LessonService:
             """
             else:  # PRACTICE mode
                 system_prompt = f"""You are in a role-playing scenario. Stay in character and respond naturally based on your role.        
-            Based on the following information to build the scenario. 总体基于略高于用户的当前水平来设计场景，添加一些突发事件来考察学生的应变能力。
+            课程内容如下：
             {lesson_content}
+    
 
             Important guidelines:
             1. For each response, provide two fields:
@@ -174,10 +175,9 @@ class LessonService:
             2. 不要做教学解释，除非学生特意要求
             3. user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
             前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。不用纠正，继续对话即可
-            4. 生成的话应该是等待user发言，而不是话没说完就结束
-            5. 如果user使用中文，用英语以符合角色的方式表达自己不太懂中文，让对方用英文简单描述。
-            6. 注意对话中引导完成设定的场景目标，displayText中输入<end_of_lesson>以结束课程
-
+            4. 如果user使用中文，用英语以符合角色的方式表达自己不太懂中文，让对方用英文简单描述。
+            5. 注意对话中引导完成设定的场景目标，当完成场景目标或者结束对话时，displayText中输入<end_of_lesson>以结束课程
+            6. 记住只有说话的内容是放在speechText中，如果要有场景描述或者旁白，都放在displayText中
             返回格式只需要json格式，如下：
             {{
                 "diagnose": [{{ # 根据user最近的一句对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
@@ -211,7 +211,11 @@ class LessonService:
             # 在调用 structured_chat 前，将 system_prompt 添加到 conversation_history 的开头
             messages_with_system = conversation_history.copy()
             # 循环messages_with_system将speechText删除
-            messages_with_system = [{"role": "user", "content": "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages_with_system])}]
+            messages_with_system = [{"role": "user", "content": "\n".join([
+            f"{msg['role'].capitalize()}: {msg['content']}" + 
+            (f"\nDisplayText: {msg['displayText']}" if msg.get("displayText") else "")
+            for msg in messages_with_system
+        ])}]
             if system_prompt:
                 messages_with_system.insert(0, {"role": "system", "content": system_prompt})
 

@@ -1,0 +1,71 @@
+FROM ai-english-tutor-base:latest
+
+WORKDIR /app
+
+# Install Nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
+# Copy backend code
+COPY backend/ .
+
+# Frontend build stage
+FROM node:18 AS frontend-build
+
+WORKDIR /app/frontend
+
+# Copy node_modules from base image
+COPY --from=0 /app/frontend/node_modules ./node_modules
+
+# Copy frontend source code
+COPY frontend/ ./
+
+# Build frontend
+RUN npm run build
+
+# Final stage
+FROM ai-english-tutor-base:latest
+
+WORKDIR /app
+
+# Install Nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
+# Copy backend code
+COPY backend/ .
+
+# Copy built frontend from the frontend-build stage
+COPY --from=frontend-build /app/frontend/build /app/static
+
+# Configure Nginx
+RUN echo '\
+server {\
+    listen 80;\
+    server_name localhost;\
+\
+    location /api/ {\
+        proxy_pass http://localhost:9000;\
+        proxy_set_header Host $host;\
+        proxy_set_header X-Real-IP $remote_addr;\
+        proxy_read_timeout 300s;\
+    }\
+\
+    location / {\
+        root /app/static;\
+        try_files $uri $uri/ /index.html;\
+    }\
+}' > /etc/nginx/conf.d/default.conf
+
+# Create a script to start all services
+RUN echo '#!/bin/bash\n\
+# Start the backend server\n\
+uvicorn main:app --host 0.0.0.0 --port 9000 &\n\
+# Start Nginx\n\
+nginx -g "daemon off;"\n\
+' > /app/start.sh
+
+RUN chmod +x /app/start.sh
+
+# Expose only Nginx port
+EXPOSE 80
+
+CMD ["/app/start.sh"]

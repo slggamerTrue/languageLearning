@@ -46,6 +46,7 @@ class LessonStep(BaseModel):
 class CreateLessonRequest(BaseModel):
     mode: Literal["study", "practice"]
     lesson_info: Optional[Dict] = None
+    user: Optional[Dict] = None
 
 class SummaryLessonRequest(BaseModel):
     mode: Literal["study", "practice"]
@@ -71,31 +72,27 @@ async def create_lesson(request: CreateLessonRequest):
         # 生成系统提示和欢迎消息
         if mode == LessonMode.PRACTICE:  # 角色扮演模式
             # 构建场景资源提示
-            system_prompt = f"""You are in a role-playing scenario. Stay in character and respond naturally based on your role.
-            If the student uses Chinese or asks to use Chinese, respond in a way that naturally encourages English use while staying in character.
-            
+            system_prompt = f"""你是一个专业的英语教师，正在设计一个角色扮演的场景。
             Based on the following information to build a role-playing scenario. 需要设定一个完成的目标保证这次的场景基于用户的水平有挑战性，同时增加一些随机事件保证每次的场景不一样。
             {request.lesson_info}
+
+            用户信息如下：
+            {request.user}
             
             Important guidelines:
             1. For each response, provide two fields:
                - displayText: 基于课程信息生成一个场景，对场景进行简单描述，并且分配bot和user的角色，显示本场景设定达到的目标以及所需的一些信息，场景描述需足够清晰，用markdown格式方便清晰的描述。
-               如是问路的场景，你甚至可以用markdown提供一个地图，设定一个当前位置和目的地，看用户能否正确指路。如是餐厅的场景，你可以提供带价格的菜单，看用户能否按要求(如必须含有2份主食，吃素，有忌口或者价格限定在多少范围内)搭配点餐
-               - speechText: 你作为bot，基于displayText中bot的角色，生成一个开场语，为方便语音合成，分割为一句一句的。
+               如是问路的场景，你甚至可以用markdown提供一个地图，设定一个当前位置和目的地，看用户能否能用英文正确指路。如是餐厅的场景，你可以提供带价格的菜单，看用户能否按要求(如必须含有2份主食，吃素，有忌口或者价格限定在多少范围内)搭配点餐
+               - speechText: 你作为bot，基于displayText中bot的角色，生成一个开场语，如按场景设定不该你先说，直接返回空数组即可，开场语尽量简洁，为方便语音合成，分割为一句一句的。
             
-            2. Stay in character while:
-               - Describing or presenting resources
-               - Answering questions about the resources
-               - Guiding the conversation naturally
-
-            3. user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
-            前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。
-               
             """
         else:  # 学习模式
             system_prompt = f"""You are an experienced English tutor helping students learn English.
             基于下面的课程信息，你需要规划今天的课程大纲，并且生成一个开场语。
             {request.lesson_info}
+            
+            用户信息如下：
+            {request.user}
             
             Important guidelines:
             1. 返回需要两个字段,displayText和speechText：
@@ -124,7 +121,7 @@ async def create_lesson(request: CreateLessonRequest):
         initial_conversation = [
             Message(
                 role="assistant",
-                content="".join(map(str, speechText)),  # Use speechText as the base content
+                content=" ".join(map(str, speechText)),  # Use speechText as the base content
                 displayText=displayText,
                 speechText=speechText
             )
