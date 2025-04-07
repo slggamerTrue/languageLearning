@@ -25,7 +25,7 @@ class AssessmentService:
 
 ---------Important----------------------
 1. 每次只问1个问题，根据用户的英语水平动态调整表达方式。
-2. 如果学生用英语回答，就用英语交流；如果学生用中文，可以用中文引导学生使用英语，这样你才能更好的了解用户实际英语水平
+2. 如果学生用英语回答，就用英语交流；如果学生用其他语言说，你能理解但是仍然保持用英文回答。
 3. 保持专业和友好的态度，尽量简短对话过程以完成信息的收集。
 4. 当你收集到所有目标信息或者用户明确表示不想提供这些信息后，在displayText字段中包含 <ASSESSMENT_COMPLETE> 标记：
 5. 输出必须是一个有效的json，json格式为：
@@ -289,41 +289,8 @@ class AssessmentService:
     async def generate_weekly_plan(self, user_profile: Dict) -> List[Dict]:
         """
         根据用户档案生成每周学习计划
-        @param phase: 当前学习阶段（周数）
         """
         try:            
-            # 获取上一周的评估结果（如果有）
-            last_assessment = None
-            if user_profile.get('completed_phases'):
-                last_assessment = user_profile['completed_phases']
-            
-            # 根据评估结果调整计划重点
-            focus_areas = []
-            review_topics = []
-            recommended_activities = []
-            
-            if last_assessment:
-                # 添加需要加强的领域
-                focus_areas.extend(last_assessment.get('areas_to_improve', []))
-                
-                # 从主要进展中提取已掌握的内容作为复习主题
-                review_topics.extend(last_assessment.get('progress', []))
-                
-                # 获取评估建议中的活动建议
-                if 'recommendations' in last_assessment:
-                    recommended_activities.extend(
-                        [rec for rec in last_assessment['recommendations'] 
-                         if any(keyword in rec.lower() 
-                             for keyword in ['练习', '尝试', '进行', '使用', '观看'])])
-            
-            # Get current learning progress and points to review
-            current_points = user_profile.get('learning_progress', {}).get('current_points', []) if user_profile.get('learning_progress') else []
-            review_points = []
-            if user_profile.get('learning_progress') and user_profile.get('learning_progress', {}).get('mastered_points'):
-                for point, mastery in user_profile.get('learning_progress', {}).get('mastered_points', {}).items():
-                    if mastery < 80:  # Points with mastery below 80% need review
-                        review_points.append(point)
-
             output_format = '''
             Generate a JSON array containing 7 daily lesson plans. Each day must be an object with these fields:
 

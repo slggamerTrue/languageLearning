@@ -55,11 +55,11 @@ class TTSService:
         speaking_rate = speed / 5.0  # Convert 1-10 scale to 0.2-2.0 scale
         
         # Determine language code and voice based on speaker_type
-        language_code = "cmn-CN"
-        voice_name = "cmn-CN-Chirp3-HD-Aoede"  # Default female voice
+        language_code = "en-US"
+        voice_name = "en-US-Chirp3-HD-Aoede"  # Default female voice
         
         if speaker_type == "male":
-            voice_name = "cmn-CN-Chirp1-HD-Aoede"  # Male voice
+            voice_name = "en-US-Chirp3-HD-Charon"  # Male voice
         
         headers = {
             "Content-Type": "application/json",

@@ -10,103 +10,7 @@ class LessonMode(Enum):
 class LessonService:
     def __init__(self):
         self.llm_service = LLMService()
-        self.max_conversation_turns = 20  # 最大对话轮数，超过后需要总结
-        self.conversation_history = []  # 存储对话历史
 
-    async def generate_lesson_content(self, lesson_plan: Dict, user_profile: Dict) -> Dict:
-        """
-        根据课程计划生成具体的课程内容
-        """
-        try:
-            prompt = f"""基于以下信息生成一节互动式英语课程：
-
-            课程计划：
-            主题：{lesson_plan['topic']}
-            情境：{lesson_plan['scenario']}
-            学习目标：{lesson_plan['objectives']}
-
-            学生信息：
-            英语水平：{user_profile['english_level']}
-            兴趣：{', '.join(user_profile['interests'])}
-            
-            请生成：
-            1. 开场白和热身活动
-            2. 核心教学内容
-            3. 互动练习
-            4. 实践活动
-            5. 课程总结
-
-            注意：内容应该有趣且实用，避免过多的语法讲解。"""
-
-            response = await self.llm_service.chat_completion(
-                messages=[
-                    {"role": "system", "content": "你是一个专业的英语教师，正在准备一节互动式课程。"},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-
-            return eval(response)
-
-        except Exception as e:
-            raise Exception(f"Lesson content generation failed: {str(e)}")
-
-    async def generate_lesson_summary(self, lesson_record: Dict) -> Dict:
-        """
-        生成课后总结和反馈
-        """
-        try:
-            prompt = f"""基于以下课程记录生成学习总结：
-
-            课程内容：{lesson_record['content']}
-            学生表现：{lesson_record['performance']}
-            学生反馈：{lesson_record['feedback']}
-
-            请提供：
-            1. 掌握得好的内容
-            2. 需要改进的地方
-            3. 常见错误分析
-            4. 建议的复习重点
-            5. 下一步学习建议"""
-
-            response = await self.llm_service.chat_completion(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "你是一个专业的英语教师，正在为学生提供课后反馈。"},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-
-            return response["content"]
-
-        except Exception as e:
-            raise Exception(f"Lesson summary generation failed: {str(e)}")
-
-
-    async def summarize_conversation(self, messages: List[Dict]) -> str:
-        """
-        总结之前的对话内容
-        """
-        try:
-            summary_prompt = f"""
-            请总结以下对话的要点，包括：
-            1. 已经讨论的主要话题和知识点
-            2. 学生表现出的困惑或特别关注的内容
-            3. 教师提供的主要解释和例子
-            4. 学生的理解程度
-            
-            对话历史：
-            {messages}
-            """
-            
-            response = await self.llm_service.chat_completion(
-                messages=[
-                    {"role": "system", "content": "你是一个专业的对话总结者，需要提取对话中的关键信息。"},
-                    {"role": "user", "content": summary_prompt}
-                ]
-            )
-            return response["content"]
-        except Exception as e:
-            raise Exception(f"Conversation summarization failed: {str(e)}")
 
     async def conduct_lesson(self, lesson_content: Dict, user_message: str = None, conversation_history: List[Dict] = None) -> Dict:
         """
@@ -130,11 +34,13 @@ class LessonService:
             
             你需要结合上面的内容和已有的对话，来一步一步的引导学生完成本次课程的内容。由于涉及到讲解知识，有些内容可能较长，
             生成的对话应该是一段完整的内容，而不是话没说完就结束，比如讲到有下面三种方式，但是没说哪三种方式，然后就结束了，这种情况是要尽量避免的。
-            你可以考虑增加些需要学生反馈的问题，以避免一次生成太长的内容，如这里设定了场景让学生说一说他知道的方式，然后根据学生的回答继续讲解。
+            为了减少一次生成对话量，如果分多点的情况，先简单说一下，然后就一点一点的讲解，讲解一点的过程中应该让学生参与练习，这样增加学生参与感。
+            你还可以考虑增加些需要学生反馈的问题，以避免一次生成太长的内容，如这里设定了场景让学生说一说他知道的方式，然后根据学生的回答继续讲解。
+            再比如讲解了一个单词，一个句子，或者一个语法后，马上让学生跟读一次，然后设定几个场景让学生来回答。一方面让学生理解，另一方面也让学生有参与感。
 
             Important guidelines:
             1. 返回以json格式需要三个字段, diagnose, displayText和speechText：
-            diagnose字段: 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
+            diagnose字段: 对于学生最后一句的回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
             speechText字段: 格式为字符串数组，教师说话的内容，按内容分为一句一句的，方便语音合成播放。
             displayText字段: 如有需要，比如展示一页slide，一份菜单，为方便讲解显示的一段文字等，在displayText字段以markdown格式显示，如无需要则置为空字符串即可。
                              如果学习课程内容完成并确认了学生的学习效果，通过了practice的练习，则在displayText输出<end_of_lesson>。
@@ -150,8 +56,8 @@ class LessonService:
             注意：返回格式只需要json格式，返回前你需要再次确认你的返回是json格式，不论对话有多长，一定不要忘记这个rule，json格式如下：
             {{
                 "diagnose": [{{ # 根据user最近的一句对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
-                    "type": str,  # 错误类型Grammar, Vocabulary, Structure, Context
-                    "description": str,  # 错误描述，引号引用原文，并用中文描述错误原因
+                    "type": str,  # 错误类型必须为：Grammar, Vocabulary, Structure, Context
+                    "description": str,  # 错误描述，引号引用原文，并用中文详细说明错误原因
                     "correct": str  # 正确的英文表达
                 }}],
                 "speechText": string[],  # 必须的语音内容,按内容分为一句一句的，方便语音合成播放。
@@ -163,27 +69,29 @@ class LessonService:
             课程内容如下：
             {lesson_content}
     
+            场景设定和需要完成的目标由下面的对话内容提供。在实现目标的过程中，随机给用户2-3个突发情况。如目标是超市购买指定的牛油果，按店员
+            指导到相应货架后发现没有牛油果了，你可以在displayText中展示这个说明这个情况，并提示用户于是你找到了店员，然后让用户进行会话。
 
             Important guidelines:
             1. For each response, provide two fields:
             - diagnose字段: 对于学生的上一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
-            - displayText: 当需要展示场景中需要用到的菜单、列表、文档等时才使用markdown格式显示，显示尽量详细，按照现实中的来否则为空
+            - displayText: 默认为空，当需要转场描述或者展示场景中需要用到的菜单、列表、文档等时才使用markdown格式显示，因为在手机侧显示，生成markdown时注意不要显示太长以至于一屏都装不下
             - speechText: bot角色说话的内容，按内容分为一句一句的，方便语音合成播放。
             
             要求：
             1. 完全按照角色设定进行对话
-            2. 不要做教学解释，除非学生特意要求
+            2. 不要做教学解释，始终保持你的身份
             3. user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
             前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。不用纠正，继续对话即可
             4. 如果user使用中文，用英语以符合角色的方式表达自己不太懂中文，让对方用英文简单描述。
-            5. 注意对话中引导完成设定的场景目标，当完成场景目标或者结束对话时，displayText中输入<end_of_lesson>以结束课程
+            5. 注意对话中引导完成设定的场景目标，当完成场景目标或者结束对话时，displayText中输出<end_of_lesson>以结束课程
             6. 记住只有说话的内容是放在speechText中，如果要有场景描述或者旁白，都放在displayText中
             返回格式只需要json格式，如下：
             {{
                 "diagnose": [{{ # 根据user最近的一句对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
-        "type": str,  # 错误类型Grammar, Vocabulary, Structure, Context
-        "description": str,  # 错误描述，引号引用原文，并用中文描述错误原因
-        "correct": str  # 正确的英文表达
+                    "type": str,  # 错误类型必须为：Grammar, Vocabulary, Structure, Context
+                    "description": str,  # 错误描述，引号引用原文，并用中文详细说明错误原因
+                    "correct": str  # 正确的英文表达
                 }}],
                 "speechText": string[],  # 必须的语音内容,按内容分为一句一句的，方便语音合成播放。
                 "displayText": str  # 可选的展示内容，支持markdown格式

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-from api import lesson_api, assessment, tts_api
+from api import lesson_api, assessment_api, tts_api
 
 # 加载环境变量
 load_dotenv()
@@ -20,7 +20,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(lesson_api.router)
-app.include_router(assessment.router)
+app.include_router(assessment_api.router)
 app.include_router(tts_api.router)
 
 # 挂载静态文件

@@ -132,96 +132,94 @@ class LLMService:
                 
                 return result
             except Exception as e:
-                print(f"\n=== JSON 解析错误 ===\n")
+                print("\n=== JSON 解析错误 ===\n")
                 print(f"Error: {str(e)}")
                 print()
                 
-                # 解析失败后，尝试重新生成
-                if output_format is not None:
-                    print("尝试重新生成符合格式要求的响应...")
+                print("尝试重新生成符合格式要求的响应...")
+                
+                # 添加重试消息
+                system_message = {
+                    "role": "system",
+                    "content": "之前的需求如下，但返回结果没有严格按照json格式要求返回，请将返回结果严格按照json格式要求返回，特别注意是否一个有效的json格式，如string中出现引号是否正确转义，格式要求如下：" + messages[0]["content"] if isinstance(messages[0], dict) else str(messages[0])
+                }
+                user_message = {
+                    "role": "user",
+                    "content": "返回的错误json格式内容：" + content
+                }
+                retry_messages = [system_message, user_message]
+                
+                try:
+                    # 重新调用API
+                    retry_response = await self.chat_completion(retry_messages, model)
+                    retry_content = retry_response["content"]
                     
-                    # 添加重试消息
-                    system_message = {
-                        "role": "system",
-                        "content": "之前的需求如下，但返回结果没有严格按照json格式要求返回，请将返回结果严格按照json格式要求返回：" + messages[0]["content"] if isinstance(messages[0], dict) else str(messages[0])
-                    }
-                    user_message = {
-                        "role": "user",
-                        "content": "上次返回的内容：" + content
-                    }
-                    retry_messages = [system_message, user_message]
+                    print("\n=== 重试生成的内容 ===\n")
+                    print(retry_content)
+                    print()
                     
-                    try:
-                        # 重新调用API
-                        retry_response = await self.chat_completion(retry_messages, model)
-                        retry_content = retry_response["content"]
+                    # 清理内容
+                    retry_content = retry_content.replace('```json', '').replace('```', '')
+                    lines = [line.strip() for line in retry_content.split('\n') if line.strip()]
+                    retry_content = '\n'.join(lines)
+                    
+                    # 尝试解析JSON
+                    array_start = retry_content.find('[')
+                    object_start = retry_content.find('{')
+                    
+                    if array_start != -1 and (object_start == -1 or array_start < object_start):
+                        start = array_start
+                    elif object_start != -1:
+                        start = object_start
+                    else:
+                        raise Exception("No valid JSON found in retry response")
                         
-                        print("\n=== 重试生成的内容 ===\n")
-                        print(retry_content)
-                        print()
+                    # 找到结束的花括号或方括号
+                    end = -1
+                    stack = []
+                    in_string = False
+                    escape = False
+                    
+                    for i, char in enumerate(retry_content[start:]):
+                        if char == '\\' and not escape:
+                            escape = True
+                            continue
                         
-                        # 清理内容
-                        retry_content = retry_content.replace('```json', '').replace('```', '')
-                        lines = [line.strip() for line in retry_content.split('\n') if line.strip()]
-                        retry_content = '\n'.join(lines)
+                        if char == '"' and not escape:
+                            in_string = not in_string
                         
-                        # 尝试解析JSON
-                        array_start = retry_content.find('[')
-                        object_start = retry_content.find('{')
-                        
-                        if array_start != -1 and (object_start == -1 or array_start < object_start):
-                            start = array_start
-                        elif object_start != -1:
-                            start = object_start
-                        else:
-                            raise Exception("No valid JSON found in retry response")
-                            
-                        # 找到结束的花括号或方括号
-                        end = -1
-                        stack = []
-                        in_string = False
-                        escape = False
-                        
-                        for i, char in enumerate(retry_content[start:]):
-                            if char == '\\' and not escape:
-                                escape = True
-                                continue
-                            
-                            if char == '"' and not escape:
-                                in_string = not in_string
-                            
-                            if not in_string:
-                                if char in '{[':
-                                    stack.append(char)
-                                elif char in '}]':
-                                    if not stack:
-                                        print(f"Error: Found closing {char} but stack is empty")
+                        if not in_string:
+                            if char in '{[':
+                                stack.append(char)
+                            elif char in '}]':
+                                if not stack:
+                                    print(f"Error: Found closing {char} but stack is empty")
+                                    break
+                                if (char == '}' and stack[-1] == '{') or (char == ']' and stack[-1] == '['):
+                                    stack.pop()
+                                    if not stack:  # 找到匹配的结束括号
+                                        end = i + 1
                                         break
-                                    if (char == '}' and stack[-1] == '{') or (char == ']' and stack[-1] == '['):
-                                        stack.pop()
-                                        if not stack:  # 找到匹配的结束括号
-                                            end = i + 1
-                                            break
-                                    else:
-                                        print(f"Error: Mismatched brackets. Found {char} but expected matching for {stack[-1]}")
-                            
-                            escape = False
+                                else:
+                                    print(f"Error: Mismatched brackets. Found {char} but expected matching for {stack[-1]}")
                         
-                        if end == -1:
-                            raise Exception("Could not find matching closing bracket in retry response")
-                        
-                        json_str = retry_content[start:start + end]
-                        retry_result = json.loads(json_str)
-                        
-                        # 如果结果是字符串，尝试解析为 JSON
-                        if isinstance(retry_result, str):
-                            retry_result = json.loads(retry_result)
-                        
-                        return retry_result
-                    except Exception as retry_e:
-                        print(f"\n=== 重试解析错误 ===\n")
-                        print(f"Error: {str(retry_e)}")
-                        print()
+                        escape = False
+                    
+                    if end == -1:
+                        raise Exception("Could not find matching closing bracket in retry response")
+                    
+                    json_str = retry_content[start:start + end]
+                    retry_result = json.loads(json_str)
+                    
+                    # 如果结果是字符串，尝试解析为 JSON
+                    if isinstance(retry_result, str):
+                        retry_result = json.loads(retry_result)
+                    
+                    return retry_result
+                except Exception as retry_e:
+                    print(f"\n=== 重试解析错误 ===\n")
+                    print(f"Error: {str(retry_e)}")
+                    print()
                 
                 # 如果重试也失败或没有输出格式要求，返回原始内容
                 return {"content": content}
