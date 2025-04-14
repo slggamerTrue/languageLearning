@@ -114,22 +114,17 @@ class AssessmentService:
 
 1. 英语水平：
 基于下面的评估系统，你需要确定学生的英语水平。
-# 评估系统 - 综合评分模型（基于 CEFR 级别）
-
-| **级别** | **词汇复杂度（Lexical Diversity）** | **语法正确性（Grammar Accuracy）** | **句子连贯性（Coherence & Cohesion）** | **任务完成度（Task Achievement）** |
-|------|--------------------------------|-------------------------------|--------------------------------|-------------------------------|
-| **A1 (Beginner)** | 使用基础词汇，常见单词，重复较多 | 语法错误较多，简单句为主 | 句子独立，少连接词 | 回答简单，缺乏细节 |
-| **A2 (Elementary)** | 使用基础词汇 + 一些短语 | 主要正确，偶尔错误 | 有少量连接词，如 "and", "but" | 回答较完整，但表达有限 |
-| **B1 (Intermediate)** | 词汇较多样，能使用同义替换 | 语法基本正确，开始使用从句 | 句子自然流畅，过渡词增加 | 回答完整，表达具体 |
-| **B2 (Upper-Intermediate)** | 使用高级词汇（同义替换、抽象词） | 语法准确，能使用复杂句 | 逻辑清晰，使用较多过渡词 | 回答全面，表达清楚，有细节支持 |
-| **C1 (Advanced)** | 词汇丰富，偶尔使用专业术语 | 语法准确，掌握高级结构（倒装、虚拟语气） | 句子结构复杂，逻辑严密 | 回答深入，有观点支撑，表达自然 |
-| **C2 (Proficient)** | 近母语水平，使用高级词汇、短语动词 | 语法几乎无错误，语法多样性高 | 文章级别连贯性，表达精确 | 观点清晰，表达精准，逻辑强 |
-
-## **示例**
-**问题**："Describe your last vacation."  
-✅ **A1 级别**："It was good. I liked it." ❌（回答简单，不完整）  
-✅ **B2 级别**："I traveled to Italy and visited Rome, Florence, and Venice. The architecture was breathtaking, and I enjoyed trying local pasta dishes." ✅（完整，表达清晰）
----
+雅思口语评分标准
+9分 专家水平：具有完全的英语运用能力，做到适当、精确、流利并能完全理解语言
+8分 优秀水平：能将英语运用自如,只是有零星的错误或用词不当，在不熟悉语境下可能出现误解，可将复杂细节的争论掌握的相当好
+7分 良好水平：能有效运用英语,虽然偶尔出现不准确、不适当和误解，大致可将复杂的英语掌握的不错，也能理解详细的推理
+6分 合格水平：大致能有效运用英语，虽然有不准确、不适当和误解发生，能使用并理解比较复杂的英语，特别是在熟悉的语境下
+5分 基础水平：可部分运用英语，虽然经常出现错误，但在大多数情况下可明白大致的意思，在经常涉及的领域内可应付基本的沟通
+4分 有限水平：只限在熟悉的状况下有基本的理解力，在理解与表达上常发生问题，无法使用复杂英语
+3分 极有限水平：在极熟悉的情况下也只能进行一般的沟通，频繁发生沟通障碍
+2分 初学水平：难以听懂或者看懂英语
+1分 不懂英语：掌握个别单词，几乎无法交流，最多能说出个别单词，根本无法用英语沟通
+0分 英语0基础：完全不懂英语，英语有多少字母都不知道
 
 2. 兴趣爱好：
    - 列出学生提到的所有兴趣爱好, 描述尽量详细，比如提到了喜欢看电影，要问清楚喜欢什么类型的电影，喜欢哪部电影列表等
@@ -148,43 +143,30 @@ class AssessmentService:
 5. 预计学习天数：
    - 如果学生提供得有deadline，则按此设定
    - 如果学生没有提供，则根据学生现有水平以及设定的目标，评估一个时间
-   - 如果时间太长(>90天)，我们则建议将目标分阶段
+   - 如果时间太长(>30天)，我们则建议将目标分阶段
    - 必须是一个整数，表示天数
+
+6. 速度建议：
+   - 根据学生的英语水平和学习目标，给出建议的速度
+   - 可以是 "slowest", "slow", "normal" 中的一个
 
 输出格式必须是一个有效的 JSON 对象，包含以下字段：
 {
     "user_profile": {
-        "english_name": string, // 学生的英文名
-        "age": number, // 学生的年龄，未提供则为 0
-        "gender": string, // 学生的性别，取值为 "male" 或 "female"
-        "career", string, //学生的职业
-        "other", string, //其他信息
-    }
+        "english_name": string, // 用户的英文名
+        "age": number, // 用户的年龄，未提供则为 0
+        "gender": string, // 用户的性别，取值为 "male" 或 "female"
+        "career": string, // 用户的职业
+        "other": string // 其他信息
+    },
     "english_level": {
-        "lexical_diversity": {
-            "text": string,   // 词汇多样性得分描述，如 "使用基础词汇，常见单词，重复较多"
-            "score": number // 词汇多样性得分
-        },
-        "grammar_accuracy": {
-            "text": string,   // 语法正确性得分描述，如 "语法错误较多，简单句为主"
-            "score": number // 语法正确性得分
-        },
-        "coherence_cohesion": {
-            "text": string,   // 句子连贯性得分描述，如 "句子结构简单，缺乏逻辑性"
-            "score": number // 句子连贯性得分
-        }, 
-        "task_achievement": {
-            "text": string,   // 任务完成度得分描述，如 "回答简单，缺乏细节"
-            "score": number // 任务完成度得分
-        },    
-        "overall": {
-            "text": string,   // 综合得分描述，如 "A2 级别，语法错误较多，缺乏逻辑性，回答简单，缺乏细节"
-            "score": string // 综合得分, 必须为下面中的一个Beginner, Elementary, Intermediate, Upper Intermediate, Advanced, Proficient
-        }
-    },      
+        "text": string,   // 得分描述，如合格水平：大致能有效运用英语，虽然有不准确、不适当和误解发生，能使用并理解比较复杂的英语，特别是在熟悉的语境下
+        "score": number // 综合得分, 按上面的雅思口语评分标准，得分0-9
+    },
+    "speed": string, // 建议语速，取值为 "slowest", "slow", "normal"     
     "interests": string[],       // 兴趣爱好列表，文字描述尽量详细
     "learning_goals": string[],  // 学习目标列表，文字描述尽量详细
-    "study_time_per_day": number // 每日学习时间（分钟）
+    "study_time_per_day": number, // 每日学习时间（分钟）
     "total_study_day": number // 预计学习天数
 }
 
@@ -255,7 +237,10 @@ class AssessmentService:
             estimate_prompt = {
                 "role": "user",
                 "content": f'''
-                请基于以下用户信息，估算达到学习目标所需的周数并按循序渐进的方式制定一个每周的学习内容：
+                请基于以下用户信息，估算达到学习目标所需的周数并制定一个每周的学习内容，制定的学习计划时需要考虑用户的学习目的，
+                如用户想要综合提升/旅游/工作，则基于各种实际会用到的会话场景来制定学习内容，
+                如用户想要通过托福、雅思、SAT等考试，则需要按照该考试的考察内容大纲来制定学习内容，
+                如用户想要顺便学习点历史、文学、艺术等其他知识，则需要按照该领域的知识大纲来制定学习内容：
                 
                 当前英语水平：{user_profile.get('english_level')}
                 学习目标：{', '.join(user_profile.get('learning_goals', []))}
@@ -350,7 +335,7 @@ class AssessmentService:
             plan_prompt = {
                 "role": "user",
                 "content": f'''
-                As an experienced English teacher, please create a detailed and engaging study plan for this week. Focus on using authentic, memorable content that naturally demonstrates language points.
+                As an experienced English teacher, please create a detailed and engaging study plan for this week.
 
                 User Profile:
                 - user_profile: {user_profile.get('user_profile')}
@@ -363,10 +348,11 @@ class AssessmentService:
                 - Current Week plan: {user_profile.get('current_week_plan')}
                 - Last Assessment: {user_profile.get('last_assessment')}
                 
-                请根据以上信息，生成针对性的每日学习计划。学习计划可能是语法，句式，单词，短语，习语，语感，表达方式等，确保：
+                请根据以上信息，生成针对性的每日学习计划。学习计划可能是必须历史，绘画，音乐，工作，学习等，
+                但你要想办法将语法，句式，单词，短语，习语，语感，表达方式等融入进去达到寓教于乐的目的，确保：
                 1. 针对周学习计划细分为日学习计划，每个学习计划设计实用的场景
                 2. 适当安排复习时间，学习上一周的内容
-                3. 控制每天的学习量符合用户时间安排，一课的知识点可以少安排点，多一些场景，让学生多练习。
+                3. 控制每天的学习量符合用户时间安排，一课的知识点可以少安排点，多一些实际的场景，让学生多练习。
                 4. 内容如有可能与用户兴趣相关最好，增加学习积极性
                 5. 如果是复习内容，设计新的情境和应用场景，避免简单重复
                 ''' + output_format

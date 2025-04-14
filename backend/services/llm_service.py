@@ -9,7 +9,7 @@ class LLMService:
         #self.model = "qwen-plus"
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         #self.model = "gemini-2.0-flash"
-        self.model = "gemini-2.5-pro-exp-03-25"
+        self.model = "gemini-2.5-pro-preview-03-25"
         #self.base_url = "https://llm.promptai.cn/pk/api/chat"
         #self.model = "pkqwen2.5-32b:latest"
         self.headers = {
