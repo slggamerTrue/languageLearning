@@ -27,7 +27,9 @@ class TTSService:
         prompt: str = '[oral_2][laugh_0][break_4]',
         use_random_speaker: bool = False,
         audio_seed: Optional[int] = None,
-        speaker_type: Optional[str] = None
+        speaker_type: Optional[str] = None,
+        native_lang: str = "cmn-CN",
+        learning_lang: str = "en-US"
     ) -> List[Dict[str, Any]]:
         """
         Generate speech from text using Google's Text-to-Speech API
@@ -55,11 +57,11 @@ class TTSService:
         speaking_rate = speed / 5.0  # Convert 1-10 scale to 0.2-2.0 scale
         
         # Determine language code and voice based on speaker_type
-        language_code = "en-US"
-        voice_name = "en-US-Chirp3-HD-Aoede"  # Default female voice
+        language_code = learning_lang
+        voice_name = f"{language_code}-Chirp3-HD-Aoede"  # Default female voice
         
         if speaker_type == "male":
-            voice_name = "en-US-Chirp3-HD-Charon"  # Male voice
+            voice_name = f"{language_code}-Chirp3-HD-Charon"  # Male voice
         
         headers = {
             "Content-Type": "application/json",

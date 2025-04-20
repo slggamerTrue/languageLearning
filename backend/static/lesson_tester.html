@@ -137,8 +137,8 @@
         <div class="tab active" data-api="create">Create Lesson</div>
         <div class="tab" data-api="chat">Chat</div>
         <div class="tab" data-api="summary">Summary</div>
-        <div class="tab" data-api="detail-analysis">Detail Analysis</div>
-        <div class="tab" data-api="diagnose-chat">Diagnose Chat</div>
+        <div class="tab" data-api="evaluate">Evaluate</div>
+        <div class="tab" data-api="weekly-summary">Weekly Summary</div>
     </div>
     
     <div class="api-section" id="create-section">
@@ -148,6 +148,26 @@
                 <option value="">Select a template...</option>
                 <option value="template1">Study Mode Template</option>
                 <option value="template2">Practice Mode Template</option>
+            </select>
+        </div>
+        <div class="language-selector" style="margin-bottom: 10px; display: flex; gap: 10px;">
+            <select id="create-native-lang" style="width: 50%;">
+                <option value="cmn-CN">中文</option>
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+            </select>
+            <select id="create-learning-lang" style="width: 50%;">
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="cmn-CN">中文</option>
             </select>
         </div>
         <div class="input-area">
@@ -172,6 +192,26 @@
                 <option value="">Select a template...</option>
                 <option value="template1">Basic Chat Template</option>
                 <option value="template2">Detailed Chat Template</option>
+            </select>
+        </div>
+        <div class="language-selector" style="margin-bottom: 10px; display: flex; gap: 10px;">
+            <select id="chat-native-lang" style="width: 50%;">
+                <option value="cmn-CN">中文</option>
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+            </select>
+            <select id="chat-learning-lang" style="width: 50%;">
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="cmn-CN">中文</option>
             </select>
         </div>
         <div class="input-area">
@@ -203,6 +243,26 @@
                 <option value="template2">Detailed Summary Template</option>
             </select>
         </div>
+        <div class="language-selector" style="margin-bottom: 10px; display: flex; gap: 10px;">
+            <select id="summary-native-lang" style="width: 50%;">
+                <option value="cmn-CN">中文</option>
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+            </select>
+            <select id="summary-learning-lang" style="width: 50%;">
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="cmn-CN">中文</option>
+            </select>
+        </div>
         <div class="input-area">
             <textarea id="summary-input" placeholder="Enter your request body here (JSON format)..."></textarea>
         </div>
@@ -218,52 +278,92 @@
         <div class="response-area" id="summary-response"></div>
     </div>
     
-    <div class="api-section" id="detail-analysis-section" style="display: none;">
-        <h2 class="api-title">Detail Analysis API</h2>
+    <div class="api-section" id="evaluate-section" style="display: none;">
+        <h2 class="api-title">Evaluate API</h2>
         <div class="template-selector">
-            <select id="detail-analysis-template">
+            <select id="evaluate-template">
                 <option value="">Select a template...</option>
-                <option value="template1">Basic Analysis Template</option>
-                <option value="template2">Detailed Analysis Template</option>
+                <option value="template1">Basic Evaluation Template</option>
+                <option value="template2">Detailed Evaluation Template</option>
+            </select>
+        </div>
+        <div class="language-selector" style="margin-bottom: 10px; display: flex; gap: 10px;">
+            <select id="evaluate-native-lang" style="width: 50%;">
+                <option value="cmn-CN">中文</option>
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+            </select>
+            <select id="evaluate-learning-lang" style="width: 50%;">
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="cmn-CN">中文</option>
             </select>
         </div>
         <div class="input-area">
-            <textarea id="detail-analysis-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+            <textarea id="evaluate-input" placeholder="Enter your request body here (JSON format)..."></textarea>
         </div>
         <div class="button-area">
-            <button class="load-template" onclick="loadTemplate('detail-analysis')">Load Selected Template</button>
-            <button class="clear-btn" onclick="clearInput('detail-analysis')">Clear</button>
-            <button onclick="sendRequest('detail-analysis')">Send Request</button>
+            <button class="load-template" onclick="loadTemplate('evaluate')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('evaluate')">Clear</button>
+            <button onclick="sendRequest('evaluate')">Send Request</button>
         </div>
-        <div class="loading" id="detail-analysis-loading">
+        <div class="loading" id="evaluate-loading">
             <div class="spinner"></div>
             <p>Processing request...</p>
         </div>
-        <div class="response-area" id="detail-analysis-response"></div>
+        <div class="response-area" id="evaluate-response"></div>
     </div>
     
-    <div class="api-section" id="diagnose-chat-section" style="display: none;">
-        <h2 class="api-title">Diagnose Chat API</h2>
+    <div class="api-section" id="weekly-summary-section" style="display: none;">
+        <h2 class="api-title">Weekly Summary API</h2>
         <div class="template-selector">
-            <select id="diagnose-chat-template">
+            <select id="weekly-summary-template">
                 <option value="">Select a template...</option>
-                <option value="template1">Basic Chat Diagnosis Template</option>
-                <option value="template2">Detailed Chat Diagnosis Template</option>
+                <option value="template1">Basic Weekly Summary Template</option>
+                <option value="template2">Detailed Weekly Summary Template</option>
+            </select>
+        </div>
+        <div class="language-selector" style="margin-bottom: 10px; display: flex; gap: 10px;">
+            <select id="weekly-summary-native-lang" style="width: 50%;">
+                <option value="cmn-CN">中文</option>
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+            </select>
+            <select id="weekly-summary-learning-lang" style="width: 50%;">
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="cmn-CN">中文</option>
             </select>
         </div>
         <div class="input-area">
-            <textarea id="diagnose-chat-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+            <textarea id="weekly-summary-input" placeholder="Enter your request body here (JSON format)..."></textarea>
         </div>
         <div class="button-area">
-            <button class="load-template" onclick="loadTemplate('diagnose-chat')">Load Selected Template</button>
-            <button class="clear-btn" onclick="clearInput('diagnose-chat')">Clear</button>
-            <button onclick="sendRequest('diagnose-chat')">Send Request</button>
+            <button class="load-template" onclick="loadTemplate('weekly-summary')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('weekly-summary')">Clear</button>
+            <button onclick="sendRequest('weekly-summary')">Send Request</button>
         </div>
-        <div class="loading" id="diagnose-chat-loading">
+        <div class="loading" id="weekly-summary-loading">
             <div class="spinner"></div>
             <p>Processing request...</p>
         </div>
-        <div class="response-area" id="diagnose-chat-response"></div>
+        <div class="response-area" id="weekly-summary-response"></div>
     </div>
 
     <script>
@@ -324,6 +424,118 @@
                             ],
                             "estimated_time": 45
                         }
+                    }
+                }
+            },
+            'evaluate': {
+                'template1': {
+                    "mode": "study",
+                    "lesson": {
+                        "topic": "Basic Greetings and Introductions",
+                        "level": "beginner"
+                    },
+                    "user": {
+                        "name": "Zhang Wei",
+                        "age": 28,
+                        "native_language": "Chinese",
+                        "learning_level": "beginner",
+                        "learning_goals": "Daily conversation"
+                    },
+                    "conversation_history": [
+                        {"role": "assistant", "content": "Hello! My name is Emma. What's your name?"},
+                        {"role": "user", "content": "[voice] Hello, my name is Zhang Wei."},
+                        {"role": "assistant", "content": "Nice to meet you, Zhang Wei! How are you today?"},
+                        {"role": "user", "content": "[voice] I'm fine, thank you. And you?"},
+                        {"role": "assistant", "content": "I'm doing well, thank you for asking! Where are you from, Zhang Wei?"},
+                        {"role": "user", "content": "[voice] I'm from China. I live in Beijing."}
+                    ]
+                },
+                'template2': {
+                    "mode": "practice",
+                    "lesson": {
+                        "topic": "Ordering Food at a Restaurant",
+                        "level": "intermediate"
+                    },
+                    "user": {
+                        "name": "Maria Garcia",
+                        "age": 32,
+                        "native_language": "Spanish",
+                        "learning_level": "intermediate",
+                        "learning_goals": "Business English"
+                    },
+                    "conversation_history": [
+                        {"role": "assistant", "content": "Hello! Welcome to Riverside Cafe. My name is Jack. I'll be your server today. Would you like to see our menu?"},
+                        {"role": "user", "content": "[voice] Yes, please. I'm very hungry."},
+                        {"role": "assistant", "content": "Here you are. Today's special is grilled salmon with roasted vegetables. Would you like something to drink while you look at the menu?"},
+                        {"role": "user", "content": "[voice] I would like a glass of water, please."},
+                        {"role": "assistant", "content": "Certainly. I'll bring that right away. Take your time with the menu, and I'll be back to take your order."},
+                        {"role": "user", "content": "[voice] I think I will have the special. How is the salmon cooked?"}
+                    ]
+                }
+            },
+            'weekly-summary': {
+                'template1': {
+                    "weeklyLessons": [
+                        {
+                            "date": "2025-04-08",
+                            "topic": "Basic Greetings",
+                            "level": 5,
+                            "performance": "Good participation, some pronunciation issues"
+                        },
+                        {
+                            "date": "2025-04-10",
+                            "topic": "Self Introduction",
+                            "level": 5.5,
+                            "performance": "Improved vocabulary usage, good sentence structure"
+                        },
+                        {
+                            "date": "2025-04-12",
+                            "topic": "Daily Routines",
+                            "level": 6,
+                            "performance": "Excellent progress, more complex sentences used"
+                        }
+                    ],
+                    "currentLevel": 5,
+                    "currentSpeed": "slow",
+                    "userInfo": {
+                        "name": "Zhang Wei",
+                        "learningGoals": "Daily conversation",
+                        "preferredTopics": ["Travel", "Food", "Movies"]
+                    }
+                },
+                'template2': {
+                    "weeklyLessons": [
+                        {
+                            "date": "2025-04-09",
+                            "topic": "Business Negotiations",
+                            "level": 7,
+                            "performance": "Good vocabulary, needs work on conditional tenses"
+                        },
+                        {
+                            "date": "2025-04-11",
+                            "topic": "Email Writing",
+                            "level": 7.5,
+                            "performance": "Excellent formal language use, good structure"
+                        },
+                        {
+                            "date": "2025-04-13",
+                            "topic": "Presentation Skills",
+                            "level": 7.5,
+                            "performance": "Confident delivery, some issues with complex grammar"
+                        },
+                        {
+                            "date": "2025-04-15",
+                            "topic": "Meeting Management",
+                            "level": 8,
+                            "performance": "Significant improvement in fluency and vocabulary"
+                        }
+                    ],
+                    "currentLevel": 7,
+                    "currentSpeed": "normal",
+                    "userInfo": {
+                        "name": "Maria Garcia",
+                        "learningGoals": "Business English",
+                        "preferredTopics": ["Finance", "Management", "Technology"]
                     }
                 }
             },
@@ -452,114 +664,6 @@
                         }
                     ]
                 }
-            },
-            'detail-analysis': {
-                'template1': {
-                    "mode": "study",
-                    "lesson": {
-                        "mode": "study",
-                        "topic": "Basic Greetings and Introductions",
-                        "assessment_day": {
-                            "day_number": 1,
-                            "topic": "Greetings and Self-Introduction"
-                        }
-                    },
-                    "user": {
-                        "english_level": "A2",
-                        "learning_goals": ["basic conversations", "self-introduction"]
-                    },
-                    "conversation_history": [
-                        {
-                            "role": "assistant",
-                            "content": "Hello! Today we'll be learning about basic greetings and introductions.",
-                            "speechText": ["Hello!", "Today we'll be learning about basic greetings and introductions."],
-                            "displayText": "# Today's Lesson: Basic Greetings and Introductions\n\n- Learn common greetings\n- Practice self-introductions\n- Use polite expressions"
-                        },
-                        {
-                            "role": "user",
-                            "content": "[voice] Hello, my name is John."
-                        },
-                        {
-                            "role": "assistant",
-                            "content": "Nice to meet you, John! Can you tell me a bit about yourself?",
-                            "speechText": ["Nice to meet you, John!", "Can you tell me a bit about yourself?"],
-                            "displayText": ""
-                        },
-                        {
-                            "role": "user",
-                            "content": "[voice] I am 30 years old. I work in IT company."
-                        }
-                    ]
-                },
-                'template2': {
-                    "mode": "practice",
-                    "lesson": {
-                        "mode": "practice",
-                        "topic": "Ordering Food at a Restaurant",
-                        "assessment_day": {
-                            "day_number": 3,
-                            "topic": "Restaurant Conversations"
-                        }
-                    },
-                    "user": {
-                        "english_level": "B1",
-                        "learning_goals": ["daily conversations", "ordering food"]
-                    },
-                    "conversation_history": [
-                        {
-                            "role": "assistant",
-                            "content": "Welcome to our restaurant! I'll be your server today. Would you like to see our menu?",
-                            "speechText": ["Welcome to our restaurant!", "I'll be your server today.", "Would you like to see our menu?"],
-                            "displayText": "# Restaurant Scenario\n\n**Your role**: Customer\n**My role**: Server\n\n**Menu:**\n- Appetizers: Salad ($5), Soup ($4)\n- Main Course: Steak ($15), Pasta ($12), Fish ($14)\n- Drinks: Water (free), Soda ($2), Coffee ($3)"
-                        },
-                        {
-                            "role": "user",
-                            "content": "[voice] Yes, I would like to see the menu please."
-                        },
-                        {
-                            "role": "assistant",
-                            "content": "Here's our menu. Today's special is the grilled salmon with vegetables. Would you like to order a drink while you decide?",
-                            "speechText": ["Here's our menu.", "Today's special is the grilled salmon with vegetables.", "Would you like to order a drink while you decide?"],
-                            "displayText": ""
-                        },
-                        {
-                            "role": "user",
-                            "content": "[voice] I will have water, please. And I think I want the steak with salad."
-                        },
-                        {
-                            "role": "assistant",
-                            "content": "Water and steak with salad. Excellent choice! How would you like your steak cooked?",
-                            "speechText": ["Water and steak with salad.", "Excellent choice!", "How would you like your steak cooked?"],
-                            "displayText": ""
-                        },
-                        {
-                            "role": "user",
-                            "content": "[voice] Medium rare, please."
-                        }
-                    ]
-                }
-            },
-            'diagnose-chat': {
-                'template1': [
-                    {
-                        "role": "user",
-                        "content": "I goed to the store yesterday and buyed some food."
-                    }
-                ],
-                'template2': [
-                    {
-                        "role": "user",
-                        "content": "I am work in a big company for five years. My job is very interesting but sometimes I am tired."
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "That's interesting! What kind of work do you do at your company?"
-                    },
-                    {
-                        "role": "user",
-                        "content": "I am software engineer. I make computer programs and fix problems."
-                    }
-                ]
             }
         };
 
@@ -610,14 +714,38 @@
                 // Parse input JSON
                 const requestBody = JSON.parse(inputElement.value);
                 
-                // Adjust API endpoint
-                let endpoint = api;
-                if (api === 'detail-analysis') {
-                    endpoint = 'detail_analysis';
+                // Map the frontend API name to the backend endpoint
+                let endpoint;
+                switch(api) {
+                    case 'create':
+                        endpoint = 'create';
+                        break;
+                    case 'chat':
+                        endpoint = 'chat';
+                        break;
+                    case 'summary':
+                        endpoint = 'summary';
+                        break;
+                    case 'evaluate':
+                        endpoint = 'evaluate';
+                        break;
+                    case 'weekly-summary':
+                        endpoint = 'generate_weekly_summary';
+                        break;
+                    default:
+                        endpoint = api;
                 }
                 
-                // Send request
-                const response = await fetch(`/api/lesson/${endpoint}`, {
+                // Get language parameters for the current API
+                const nativeLang = document.getElementById(`${api}-native-lang`).value;
+                const learningLang = document.getElementById(`${api}-learning-lang`).value;
+                
+                // Send request with language parameters as URL query parameters
+                const url = new URL(`/api/lesson/${endpoint}`, window.location.origin);
+                url.searchParams.append('native_lang', nativeLang);
+                url.searchParams.append('learning_lang', learningLang);
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -725,8 +853,16 @@
                 loadingElement.style.display = 'block';
                 responseElement.textContent = '';
                 
-                // Send request
-                const response = await fetch('/api/lesson/chat', {
+                // Get language parameters
+                const nativeLang = document.getElementById('chat-native-lang').value;
+                const learningLang = document.getElementById('chat-learning-lang').value;
+                
+                // Send request with language parameters as URL query parameters
+                const url = new URL('/api/lesson/chat', window.location.origin);
+                url.searchParams.append('native_lang', nativeLang);
+                url.searchParams.append('learning_lang', learningLang);
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

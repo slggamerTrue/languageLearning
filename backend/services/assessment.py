@@ -29,25 +29,9 @@ class AssessmentService:
         """
         # 如果找不到对应的语言名称，则返回代码本身
         return self.LANGUAGE_NAMES.get(lang_code, lang_code)
-    
-    def should_use_english_prompt(self, native_lang: str) -> bool:
-        """
-        决定是否使用英语提示
-        
-        参数:
-            native_lang: 用户母语代码
-            
-        返回:
-            如果应该使用英语提示，则返回 True，否则返回 False
-            
-        说明:
-            除了中文母语外，其他母语都使用英语提示
-        """
-        # 只有中文母语使用中文提示，其他语言都使用英语提示
-        #return not native_lang.startswith("cmn")
-        return True
 
-    async def conduct_initial_assessment(self, messages: List[Dict], native_lang: str = "cmn-CN", learning_lang: str = "en-US") -> Dict:
+
+    async def conduct_initial_assessment(self, messages: List[Dict], native_lang: str = "", learning_lang: str = "en-US") -> Dict:
         """
         通过对话进行初始评估
         
@@ -57,12 +41,16 @@ class AssessmentService:
             learning_lang: 学习语言，默认为"en-US"（英语）
         """
         try:
+            use_english_prompt = True
+            if native_lang == "":
+                native_lang = "cmn-CN"
+                use_english_prompt = False
             # 获取语言名称
             native_language_name = self.get_language_name(native_lang)
             target_language_name = self.get_language_name(learning_lang)
             
             # 根据母语选择提示语言
-            if self.should_use_english_prompt(native_lang):
+            if use_english_prompt:
                 system_content = f"""
 --------Role-------------------
 You are a professional {target_language_name} teacher. As the first step in helping a {native_language_name} speaker who want to learn {target_language_name} develop a {target_language_name} learning plan, 
@@ -132,7 +120,7 @@ Your output must be in valid JSON format, with the guided dialogue content place
         except Exception as e:
             raise Exception(f"Assessment failed: {str(e)}")
 
-    async def analyze_assessment(self, conversation: List[Dict], native_lang: str = "cmn-CN", learning_lang: str = "en-US") -> Dict:
+    async def analyze_assessment(self, conversation: List[Dict], native_lang: str = "", learning_lang: str = "en-US") -> Dict:
         """
         分析对话内容，生成用户档案
         
@@ -159,11 +147,15 @@ Your output must be in valid JSON format, with the guided dialogue content place
                 content = msg["content"].replace("<ASSESSMENT_COMPLETE>", "").strip()
                 formatted_conversation += f"{role}: {content}\n\n"
 
+            use_english_prompt = True
+            if native_lang == "":
+                native_lang = "cmn-CN"
+                use_english_prompt = False
             # 获取语言名称
             native_language_name = self.get_language_name(native_lang)
             target_language_name = self.get_language_name(learning_lang)
 
-            if self.should_use_english_prompt(native_lang):
+            if use_english_prompt:
                 content_text = f"""Please analyze the following conversation and generate a learner profile:
 
 {formatted_conversation}"""
@@ -215,7 +207,8 @@ Based on the dialogue provided, you must extract the following information and s
 
 **Output Format:**
 
-The output *must* be a single, valid JSON object structured exactly as follows. Do not include any explanations, comments outside the defined structure, or fields not listed below.
+The output *must* be a single, valid JSON object structured exactly as follows. use {native_language_name} language
+Do not include any explanations, comments outside the defined structure, or fields not listed below.
 
 ```json
 {{
@@ -227,7 +220,7 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
         "other": string // Any other relevant personal information mentioned (use empty string "" if not provided)
     }},
     "language_level": {{
-        "text": string,   // Text description of the assessed level (e.g., "Competent User: Has generally effective command...")
+        "text": string,   // Text description of the assessed level, please use {native_language_name} language
         "score": number // The corresponding proficiency score (0-9)
     }},
     "speed": string, // Recommended learning pace: "slowest", "slow", or "normal"
@@ -287,13 +280,13 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
 输出格式必须是一个有效的 JSON 对象，包含以下字段：
 {
     "user_profile": {
-        "name": string, // 用户的英文名
+        "english_name": string, // 用户的英文名
         "age": number, // 用户的年龄，未提供则为 0
         "gender": string, // 用户的性别，取值为 "male" 或 "female"
         "career": string, // 用户的职业
         "other": string // 其他信息
     },
-    "language_level": {
+    "english_level": {
         "text": string,   // 得分描述，如合格水平：大致能有效运用英语，虽然有不准确、不适当和误解发生，能使用并理解比较复杂的英语，特别是在熟悉的语境下
         "score": number // 综合得分, 按上面的雅思口语评分标准，得分0-9
     },
@@ -322,26 +315,6 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
                 profile_data = await self.llm.structured_chat(messages)
                 print("\n=== LLM 返回的数据 ===\n")
                 print(profile_data)
-                
-                # 验证必需字段
-                required_fields = ["language_level", "interests", "learning_goals", "study_time_per_day"]
-                missing_fields = [field for field in required_fields if field not in profile_data]
-                if missing_fields:
-                    raise ValueError(f"缺少必需的字段：{', '.join(missing_fields)}")
-                
-                # 验证字段类型
-                if not isinstance(profile_data["language_level"], dict):
-                    raise ValueError("english_level 必须是对象")
-                if not isinstance(profile_data["interests"], list):
-                    raise ValueError("interests 必须是数组")
-                if not isinstance(profile_data["learning_goals"], list):
-                    raise ValueError("learning_goals 必须是数组")
-                if not isinstance(profile_data["study_time_per_day"], (int, float)):
-                    raise ValueError("study_time_per_day 必须是数字")
-                if not isinstance(profile_data["total_study_day"], (int, float)):
-                    raise ValueError("total_study_day 必须是数字")
-                
-                print("\n=== 验证通过，创建用户档案 ===\n")
                 return profile_data
                 
             except ValueError as e:
@@ -359,7 +332,7 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
             raise Exception(f"Profile analysis failed: {str(e)}")
 
 
-    async def generate_total_plan(self, user_profile: Dict, native_lang: str = "cmn-CN", learning_lang: str = "en-US") -> Dict:
+    async def generate_total_plan(self, user_profile: Dict, native_lang: str = "", learning_lang: str = "en-US") -> Dict:
         """
         根据用户档案估算学习时长（周数）
         
@@ -369,24 +342,28 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
             learning_lang: 学习语言，默认为"en-US"（英语）
         """
         try:
-            
+            use_english_prompt = True
+            if native_lang == "":
+                native_lang = "cmn-CN"
+                use_english_prompt = False
             # 获取语言名称
             native_language_name = self.get_language_name(native_lang)
             target_language_name = self.get_language_name(learning_lang)
             
             # 根据母语选择提示语言
-            if self.should_use_english_prompt(native_lang):
+            if use_english_prompt:
                 prompt_content = f'''
                 Based on the following user information, please estimate the number of weeks needed to achieve the learning goals and create a total learning plan to study the {target_language_name} language for a {native_language_name} speaker. 
                 When creating the learning plan, consider the user's learning purpose.
                 If the user wants comprehensive improvement/travel/work, base the learning content on various real-life conversation scenarios.
                 If the user wants to pass tests like TOEFL, IELTS, SAT, etc., follow the test outline to create learning content.
-                If the user wants to learn about history, literature, art, or other knowledge, follow the knowledge outline of that field to create learning content:
+                If the user wants to learn about history, literature, art, or other knowledge, follow the knowledge outline of that field to create learning content.
+                If the user just wants to learn a new language, follow the {target_language_name} country's most widely used textbooks to create learning content.
                 
                 {user_profile}
                 
                 Please consider the following factors:
-                1. The user's starting point (current {target_language_name} level)
+                1. The user's starting point (current {target_language_name} level) and the user's age
                 2. The difficulty and number of learning goals
                 3. Daily study time invested
                 4. General learning curve and progress
@@ -442,7 +419,7 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
         except Exception as e:
             raise Exception(f"Study duration estimation failed: {str(e)}")
 
-    async def generate_weekly_plan(self, user_profile: Dict, native_lang: str = "cmn-CN", learning_lang: str = "en-US") -> List[Dict]:
+    async def generate_weekly_plan(self, user_profile: Dict, native_lang: str = "", learning_lang: str = "en-US") -> List[Dict]:
         """
         根据用户档案生成每周学习计划
         
@@ -451,7 +428,11 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
             native_lang: 用户母语，默认为"cmn-CN"（中文）
             learning_lang: 学习语言，默认为"en-US"（英语）
         """
-        try:       
+        try:
+            use_english_prompt = True
+            if native_lang == "":
+                native_lang = "cmn-CN"
+                use_english_prompt = False
             # 获取语言名称
             native_language_name = self.get_language_name(native_lang)
             target_language_name = self.get_language_name(learning_lang)
@@ -514,7 +495,7 @@ The output *must* be a single, valid JSON object structured exactly as follows. 
             '''
 
             # 根据母语选择提示语言
-            if self.should_use_english_prompt(native_lang):
+            if use_english_prompt:
                 prompt_content = f'''
                 As an experienced {target_language_name} teacher, please help a {native_language_name} speaker to create a detailed and engaging study plan for this week based on the user input.
                 The learning plans may involve history, drawing, music, work, study, etc., but you should find ways to incorporate grammar, sentence patterns, 

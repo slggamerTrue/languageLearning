@@ -8,7 +8,7 @@ assessment_service = AssessmentService()
 @router.post("/initial-chat")
 async def chat_with_ai(
     messages: List[Dict] = Body(...),
-    native_lang: str = Query("cmn-CN", description="用户母语，默认为cmn-CN（中文）"),
+    native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
 ):
     """
@@ -24,7 +24,7 @@ async def chat_with_ai(
 @router.post("/analyze-profile")
 async def analyze_user_profile(
     messages: List[Dict] = Body(...),
-    native_lang: str = Query("cmn-CN", description="用户母语，默认为cmn-CN（中文）"),
+    native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
 ):
     """
@@ -40,7 +40,7 @@ async def analyze_user_profile(
 @router.post("/generate-total-plan")
 async def generate_total_plan(
     profile: Dict = Body(...),
-    native_lang: str = Query("cmn-CN", description="用户母语，默认为cmn-CN（中文）"),
+    native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
 ):
     """
@@ -56,7 +56,7 @@ async def generate_total_plan(
 @router.post("/generate-weekly-plan")
 async def generate_weekly_plan(
     topic_with_profile: Dict = Body(...),
-    native_lang: str = Query("cmn-CN", description="用户母语，默认为cmn-CN（中文）"),
+    native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
 ):
     """

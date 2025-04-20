@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
 from pydantic import BaseModel
 from services.tts_service import TTSService
@@ -26,6 +26,8 @@ def get_tts_service():
 @router.post("/generate", response_model=TextToSpeechResponse)
 async def generate_speech(
     request: TextToSpeechRequest,
+    native_lang: str = Query("cmn-CN", description="用户母语，默认为cmn-CN（中文）"),
+    learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）"),
     tts_service: TTSService = Depends(get_tts_service)
 ):
     """
@@ -41,7 +43,9 @@ async def generate_speech(
             prompt=request.prompt,
             use_random_speaker=request.use_random_speaker,
             audio_seed=request.audio_seed,
-            speaker_type=request.speaker_type
+            speaker_type=request.speaker_type,
+            native_lang=native_lang,
+            learning_lang=learning_lang
         )
         return TextToSpeechResponse(results=results)
     except Exception as e:
