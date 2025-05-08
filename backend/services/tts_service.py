@@ -13,7 +13,7 @@ class TTSService:
     
     def __init__(self):
         self.api_url = "https://texttospeech.googleapis.com/v1beta1/text:synthesize"
-        self.api_key = os.getenv("PROMPTAI_API_KEY")
+        self.api_key = os.getenv("GOOGLE_TTS_API_KEY")
         if not self.api_key:
             logger.warning("GOOGLE_TTS_API_KEY environment variable not set")
     

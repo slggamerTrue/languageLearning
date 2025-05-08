@@ -73,8 +73,8 @@ class LessonService:
             
             """
         else:  # 学习模式
-            system_prompt = f"""You are an experienced English tutor helping user learn {learning_language_name} language.
-            基于下面提供的课程信息和用户信息，你需要规划今天的课程大纲，并且生成一个开场语。生成大纲时请考虑用户目前的语言水平和用户年龄，如用户{learning_language_name}水平较低，请使用尽量基础的单词和句型。
+            system_prompt = f"""You are a professional {learning_language_name} teacher helping one {native_language_name} mother tongue learner learn {learning_language_name} language.
+            基于下面提供的课程信息和用户信息，课程信息和用户信息可能用各国语言提供，你只要理解课程的意思即可。你需要规划今天的课程大纲，并且生成一个开场语。生成大纲时请考虑用户目前的语言水平和用户年龄，如用户{learning_language_name}水平较低，请使用尽量基础的单词和句型。
             
             Important guidelines:
             1. Return two fields, displayText and speechText:
@@ -93,13 +93,13 @@ class LessonService:
         }
         '''
         
-        response = await self.llm_service.structured_chat(
+        result = await self.llm_service.structured_chat(
             messages=[{"role": "system", "content": system_prompt + output_format},
             {"role": "user", "content": str(request)}]
         )
-        
-        displayText = response["displayText"]
-        speechText = response["speechText"]
+
+        displayText = result["displayText"]
+        speechText = result["speechText"]
         
         initial_conversation = [
             Message(
@@ -111,7 +111,8 @@ class LessonService:
         ]
         
         return {
-            "conversation_history": initial_conversation
+            "conversation_history": initial_conversation,
+            "usage": result["usage"]
         }
 
     async def conduct_lesson(self, lesson_content: Dict, user: Dict = None, user_message: str = None, conversation_history: List[Dict] = None, native_lang: str = "cmn-CN", learning_lang: str = "en-US") -> Dict:
@@ -139,29 +140,31 @@ class LessonService:
                 Course content: {lesson_content}
                 User info: {user}
             
-            你需要结合上面的课程内容, 用户信息以及下面提供的对话，结合场景和主题，通过和user探讨的方式，来一步一步的引导user完成本次{target_language_name}学习。这是一个一对一的教学，请保证充分的互动。
+            1. 你需要结合上面的课程内容, 用户信息以及下面提供的对话，结合场景和主题，通过和user探讨的方式，来一步一步的引导user完成本次{target_language_name}学习。这是一个一对一的教学，请保证充分的互动。
 
             2. 请使用{target_language_name}语言，不要出现其他语言内容。并且你需要根据用户的年龄和{target_language_name}语言水平来决定你使用语言的难易度。如用户年龄较小或{target_language_name}水平较低，请使用尽量基础的单词和句型，限定词汇量。
             另外，如果对话过程中用户表示太难了或者听不懂，你可以用更简单的方式重新解释，并且之后也一直保持简单，往下调低难度，限定词汇量等。
 
+            3. 如果用户确实一点都不懂{target_language_name}, 你可以在displayText中以{native_language_name}显示每句话的翻译，但是你始终都以{target_language_name}来说。
+
             Important guidelines:
             1. 返回以json格式需要三个字段, diagnose, displayText和speechText：
-            diagnose字段: 对于下面user最后一句的回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
+            diagnose字段: 分析user最后一句对话，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适，发音是否正确等。
             speechText字段: 格式为字符串数组，教师说话的内容，Please use {target_language_name} language，所以不要出现其他语言内容或者特殊字符如星号括号拼音等不方便语音合成的内容，内容分为一句一句的，方便语音合成播放。
             displayText字段: 尽量不显示，除非讲解中需要用到文字不好描述的内容，如展示一份菜单、地图等。在displayText字段以markdown格式显示，如无需要则置为空字符串即可。
                              如果学习课程内容完成并通过实际场景练习确认了学生的学习效果，则在displayText输出<end_of_lesson>。
 
             2. 始终记得自己是一个{target_language_name}教师，既要及时解答user的疑问，也要基于下面的教学大纲来完成本课的内容。被打断了要记得及时回到课程内容上来。
             教学中要充分保证互动，以确认user的学习效果。
-
-            3.user的会话前缀是[voice]表示user是通过语音输入，所以如果有单词让你疑惑可能是user发音不标准造成语音识别的问题，你可以猜测user的意思进行回答即可。
-            前缀[text]表示user是通过文字输入，那可能存在一些拼写错误。
-
-            4. 你一次说话不要太长，需要鼓励user多说，让user参与到对话中来。
+            3. user的对话是通过语音识别输入，所以如果有单词让你疑惑或出现少数其他文字，可能是语音识别的问题，也可能是user发音不标准造成语音识别的问题，你可以猜测user的意思进行回答即可。
+            4. 你一次说话不要太长，需要鼓励user多说，让user参与到对话中来。如果明显用户没有说完，你可以提示user继续说。
+            5. 如果用户要求说慢一点，你可以在speechText中的word间加上...来让TTS变慢
+            6. 如果用户明显没有说完，你可以提示user继续说。
+            7. 如果需要用户跟读的情况，不要仅跟读单词，这样语音识别容易出问题，请融入到一句话中。
 
             注意：返回格式只需要json格式，返回前你需要再次确认你的返回是json格式，不论对话有多长，一定不要忘记这个rule，json格式如下：
             {{
-                "diagnose": [{{ # 根据user最近的一句对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
+                "diagnose": [{{ # 仅分析user最后的一句话，是否存在语法，单词，结构，上下文错误，发音错误(因为使用的语音识别可能犯错，这里的判断尽量放松一些)，如无错误则返回空数组。
                     "type": str,  # 错误类型必须为：Grammar, Vocabulary, Structure, Context，Pronunciation
                     "description": str,  # 错误描述，引号引用原文，说明错误原因，please use {native_language_name} language
                     "correct": str  # 正确的{target_language_name}表达
@@ -180,26 +183,28 @@ class LessonService:
 
             Important guidelines:
             1. For each response, provide two fields:
-            - diagnose字段: 对于下面user的最后一句回答，进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
+            - diagnose字段: 对下面user的最后一句对话进行诊断，主要评测语法是否有错，单词短语使用是否准确，任务完成度，在当前语境下是否合适等。
             - displayText: 默认为空，当需要转场描述或者展示场景中需要用到的菜单、列表、文档等时才使用markdown格式显示，因为在手机侧显示，生成markdown时注意不要显示太长以至于一屏都装不下，Please use {target_language_name} language or {native_language_name} language.
-            - speechText: bot角色说话的内容，必须的方便TTS的文本内容，不要出现特殊字符如星号括号等不方便读的，按内容分为一句一句的，方便语音合成播放。Please use {target_language_name} language.
+            - speechText: bot角色说话的内容，必须是方便TTS的文本内容，不要出现特殊字符如星号括号等不方便读的，按内容分为一句一句的，方便语音合成播放。Please use {target_language_name} language.
             
             要求：
-            1. 完全按照角色设定进行对话，注意任务目标是用户需要完成的任务，你扮演的角色并不一定知道。所以不要提示用户完成任务。
+            1. 完全按照角色设定进行对话，注意任务目标是用户需要完成的任务，你扮演的角色并不知道。所以不要提示用户需要完成任务。
             2. 不要做教学解释，始终保持你的身份，说你的角色该说的话。
-            3. user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
-            前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。不用纠正，继续对话即可
-            4. 如果user使用非{target_language_name}，用{target_language_name}以符合角色的方式表达自己不太懂其他语言，让对方用{target_language_name}简单描述。
+            3. user的会话是通过语音识别输入的，所以如果有单词让你疑惑或者出现少数其他语言文字，可能是语音识别的问题，也可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
+            4. 如果user使用非{target_language_name}语言，用{target_language_name}以符合角色的方式表达自己不太懂其他语言，让对方用{target_language_name}简单描述。
             5. 当完成场景目标或者结束对话时，displayText中输出<end_of_lesson>以结束课程
             6. 记住只有说话的内容是放在speechText中，如果要有场景描述或者旁白，都放在displayText中
+            7. 如果用户明显没有说完，你可以提示user继续说。
+            8. 如果用户要求说慢一点，你可以在speechText中的word间加上...来让TTS变慢
+
             返回格式只需要json格式，如下：
             {{
-                "diagnose": [{{ # 根据下面user最近的一次对话，分析是否存在语法，单词，结构，上下文错误，如无错误则返回空数组。
+                "diagnose": [{{ # 仅分析user最后的一句话，是否存在语法，单词，结构，上下文错误，发音错误(因为使用的语音识别可能犯错，这里的判断尽量放松一些)，如无错误则返回空数组。
                     "type": str,  # 错误类型必须为：Grammar, Vocabulary, Structure, Context，Pronunciation
                     "description": str,  # 错误描述，引号引用原文，说明错误原因，please use {native_language_name} language
                     "correct": str  # 正确的{target_language_name}表达
                 }}],
-                "speechText": string[],  # 必须是方便TTS合成的文本内容，不要出现特殊字符如星号、括号、拼音等不方便读的，内容分为一句一句的，方便语音合成播放。
+                "speechText": string[],  # 必须是{target_language_name}语言，不要出现其他语言内容或者特殊字符如星号、括号、拼音等不方便语音合成的内容，内容分为一句一句的。
                 "displayText": str  # 可选的展示内容，支持markdown格式，默认使用{target_language_name},如有需要也能使用{native_language_name}。
             }}
                 """
@@ -214,10 +219,10 @@ class LessonService:
             messages_with_system = conversation_history.copy()
             # 循环messages_with_system将speechText删除
             messages_with_system = [{"role": "user", "content": "\n".join([
-            f"{msg['role'].capitalize()}: {msg['content']}" + 
-            (f"\nDisplayText: {msg['displayText']}" if msg.get("displayText") else "")
-            for msg in messages_with_system
-        ])}]
+                (f"\nDisplayText: {msg['displayText']}" if msg.get("displayText") else "") +
+                f"{msg['role'].capitalize()}: {msg['content']}"
+                for msg in messages_with_system
+            ])}]
             #打印messages_with_system的最后一句
             print("user message:", messages_with_system[-1])
             messages_with_system.insert(0, {"role": "system", "content": system_prompt})
@@ -233,7 +238,8 @@ class LessonService:
                 "content": response.get("speechText", response.get("content")),
                 "speechText": response.get("speechText", response.get("content")),
                 "displayText": response.get("displayText", ""),
-                "diagnose": response.get("diagnose", "")
+                "diagnose": response.get("diagnose", ""),
+                "usage": response.get("usage", None)
             }
             
             return formatted_response
@@ -323,7 +329,10 @@ class LessonService:
         report = response["content"]
         if report.startswith("\"") and report.endswith("\""):
             report = report[1:-1]
-        return report
+        return {
+            "report": report,
+            "usage": response["usage"]
+        }
 
 
     async def evaluate_lesson(self, request: SummaryLessonRequest, native_lang: str = "cmn-CN", learning_lang: str = "en-US") -> Dict:
@@ -336,8 +345,8 @@ class LessonService:
         system_prompt = f"""你是一个{target_language_name}教育专家，本次{target_language_name}课程为{request.mode}模式。
         今天的日期是：{current_date}
 
-        本次课程的内容、用户信息以及对话见后。其中user表示用户的对话，assistant表示助手的回复。user的会话前缀是[voice]表示用户是通过语音输入，所以如果有单词让你疑惑可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。
-        前缀[text]表示用户是通过文字输入，那可能存在一些拼写错误。
+        本次课程的内容、用户信息以及对话见后。其中user表示用户的对话，assistant表示助手的回复。
+        user的会话是通过语音识别输入，所以如果有单词让你疑惑或者出现其他语言的文字，可能是语音识别问题，当然也可能是用户发音不标准的问题，你可以猜测用户的意思进行回答即可。评分时适当放宽这方面的问题。
         TASK: 你的任务是基于这些信息评估学生本课的完成情况以及本课中表现的英语水平。Please use {native_language_name} language to describe the reason.
 
         英语水平评测标准为
@@ -354,14 +363,14 @@ class LessonService:
 
         输出格式为有效的json，格式如下：
         {{
-            "text": str,  # 一句话总结评分原因
+            "text": str,  # 一句话总结评分原因, Please use {native_language_name} language.
             "eval": {{
                 "score": int,  # 本课的完成情况，1-3分，3分最高，表示完成了课程要求的所有内容，2分表示完成了课程要求的大部分要求，1分最低，表示大部分要求没有完成。
-                "reason": str  # 评级原因，如"要求进行的练习没有完成，或者回答的内容不够详细。" Please use {native_language_name} language.
+                "reason": str  # 评级原因，如"要求进行的练习没有完成，或者回答的内容不够详细。", Please use {native_language_name} language.
                 }}
             "level": {{
                 "score": number,  # 综合得分, 按上面的雅思口语评分标准，得分0-9
-                "reason": str  # 得分原因，如合格水平：大致能有效运用英语，虽然有不准确、不适当和误解发生，能使用并理解比较复杂的英语，特别是在熟悉的语境下 Please use {native_language_name} language.
+                "reason": str  # 得分原因，如合格水平：大致能有效运用英语，虽然有不准确、不适当和误解发生，能使用并理解比较复杂的英语，特别是在熟悉的语境下. Please use {native_language_name} language.
             }}
         }}
         """

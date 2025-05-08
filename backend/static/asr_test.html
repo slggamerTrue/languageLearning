@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Chirp ASR API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .record-button {
+            background-color: #e74c3c;
+        }
+        .record-button.recording {
+            background-color: #c0392b;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .result-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .loading {
+            text-align: center;
+            display: none;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .params-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .params-container .form-group {
+            flex: 1 1 200px;
+        }
+        .audio-controls {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+        }
+        .audio-preview {
+            width: 100%;
+            margin-top: 10px;
+        }
+        .transcript {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .confidence {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .language-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .language-tag {
+            background-color: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+        }
+        .file-upload {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google Chirp ASR API Test</h1>
+    
+    <div class="audio-controls">
+        <h2>Record Audio</h2>
+        <div>
+            <button id="recordButton" class="record-button">Start Recording</button>
+            <button id="stopButton" disabled>Stop Recording</button>
+            <button id="playButton" disabled>Play Recording</button>
+        </div>
+        <div id="recordingStatus"></div>
+        <audio id="audioPreview" class="audio-preview" controls></audio>
+    </div>
+
+    <div class="file-upload">
+        <h2>Or Upload Audio File</h2>
+        <input type="file" id="audioFileInput" accept="audio/*">
+    </div>
+    
+    <div class="form-container">
+        <div class="params-container">
+            <div class="form-group">
+                <label for="languageCode">Primary Language:</label>
+                <select id="languageCode">
+                    <option value="en-US">English (US)</option>
+                    <option value="cmn-CN">Chinese (Mandarin)</option>
+                    <option value="ja-JP">Japanese</option>
+                    <option value="ko-KR">Korean</option>
+                    <option value="es-ES">Spanish</option>
+                    <option value="fr-FR">French</option>
+                    <option value="de-DE">German</option>
+                    <option value="ru-RU">Russian</option>
+                    <option value="auto">Auto-detect language</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="alternativeLanguageCodes">Alternative Languages (comma separated):</label>
+                <input type="text" id="alternativeLanguageCodes" value="cmn-CN,ja-JP" placeholder="e.g., cmn-CN,ja-JP">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <p><strong>Model:</strong> Chirp (Universal Speech Model)</p>
+            <p class="description">Google's Chirp model is used for high-quality speech recognition with support for multiple languages and language auto-detection.</p>
+        </div>
+
+        <div class="params-container">
+            <div class="form-group">
+                <label for="enableAutomaticPunctuation">Automatic Punctuation:</label>
+                <select id="enableAutomaticPunctuation">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="enableWordTimeOffsets">Word Time Offsets:</label>
+                <select id="enableWordTimeOffsets">
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="maxAlternatives">Max Alternatives:</label>
+                <input type="number" id="maxAlternatives" value="1" min="1" max="10">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <button id="recognizeButton" disabled>Recognize Speech</button>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <p>Processing speech recognition...</p>
+    </div>
+    
+    <div class="result-container" id="resultContainer" style="display: none;">
+        <h2>Recognition Results:</h2>
+        <div id="results"></div>
+    </div>
+    
+    <script>
+        // Variables for recording
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob = null;
+        let isRecording = false;
+        
+        // DOM elements
+        const recordButton = document.getElementById('recordButton');
+        const stopButton = document.getElementById('stopButton');
+        const playButton = document.getElementById('playButton');
+        const audioPreview = document.getElementById('audioPreview');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const recognizeButton = document.getElementById('recognizeButton');
+        const audioFileInput = document.getElementById('audioFileInput');
+        
+        // Initialize recording functionality
+        recordButton.addEventListener('click', startRecording);
+        stopButton.addEventListener('click', stopRecording);
+        playButton.addEventListener('click', playRecording);
+        recognizeButton.addEventListener('click', recognizeSpeech);
+        audioFileInput.addEventListener('change', handleFileUpload);
+        
+        // Start recording function
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.addEventListener('dataavailable', event => {
+                    audioChunks.push(event.data);
+                });
+                
+                mediaRecorder.addEventListener('stop', () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioPreview.src = audioUrl;
+                    playButton.disabled = false;
+                    recognizeButton.disabled = false;
+                    recordingStatus.textContent = 'Recording stopped. Ready to recognize.';
+                });
+                
+                mediaRecorder.start();
+                isRecording = true;
+                recordButton.classList.add('recording');
+                recordButton.textContent = 'Recording...';
+                stopButton.disabled = false;
+                recordingStatus.textContent = 'Recording in progress...';
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                recordingStatus.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Stop recording function
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordButton.classList.remove('recording');
+                recordButton.textContent = 'Start Recording';
+                stopButton.disabled = true;
+                
+                // Stop all audio tracks
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+        }
+        
+        // Play recording function
+        function playRecording() {
+            audioPreview.play();
+        }
+        
+        // Handle file upload
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                audioBlob = file;
+                const audioUrl = URL.createObjectURL(file);
+                audioPreview.src = audioUrl;
+                playButton.disabled = false;
+                recognizeButton.disabled = false;
+                recordingStatus.textContent = `File loaded: ${file.name}`;
+            }
+        }
+        
+        // Recognize speech function
+        async function recognizeSpeech() {
+            if (!audioBlob) {
+                alert('Please record or upload audio first');
+                return;
+            }
+            
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            try {
+                // Convert audio blob to base64
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                
+                reader.onloadend = async () => {
+                    // Get base64 data (remove the data URL prefix)
+                    const base64Audio = reader.result.split(',')[1];
+                    
+                    // Get parameters
+                    const languageCode = document.getElementById('languageCode').value;
+                    const alternativeLanguageCodesInput = document.getElementById('alternativeLanguageCodes').value;
+                    const alternativeLanguageCodes = alternativeLanguageCodesInput ? 
+                        alternativeLanguageCodesInput.split(',').map(lang => lang.trim()) : [];
+                    // Chirp model is used by default
+                    const enableAutomaticPunctuation = document.getElementById('enableAutomaticPunctuation').value === 'true';
+                    const enableWordTimeOffsets = document.getElementById('enableWordTimeOffsets').value === 'true';
+                    const maxAlternatives = parseInt(document.getElementById('maxAlternatives').value);
+                    
+                    // Prepare request payload
+                    const requestData = {
+                        audio_content: base64Audio,
+                        language_code: languageCode,
+                        alternative_language_codes: alternativeLanguageCodes,
+                        enable_automatic_punctuation: enableAutomaticPunctuation,
+                        enable_word_time_offsets: enableWordTimeOffsets,
+                        max_alternatives: maxAlternatives
+                    };
+                    
+                    try {
+                        // Make API request
+                        const response = await fetch('/api/asr/recognize', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestData)
+                        });
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`API Error (${response.status}): ${errorText}`);
+                        }
+                        
+                        const data = await response.json();
+                        displayResults(data);
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        const resultsDiv = document.getElementById('results');
+                        resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                        document.getElementById('resultContainer').style.display = 'block';
+                    } finally {
+                        document.getElementById('loading').style.display = 'none';
+                    }
+                };
+            } catch (error) {
+                console.error('Error processing audio:', error);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        // Display results function
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            if (!data || !data.success) {
+                resultsDiv.innerHTML = '<div class="error">No results returned from the API</div>';
+                document.getElementById('resultContainer').style.display = 'block';
+                return;
+            }
+            
+            // Display main transcript
+            const transcriptDiv = document.createElement('div');
+            transcriptDiv.className = 'transcript';
+            transcriptDiv.innerHTML = `
+                <h3>Transcript:</h3>
+                <p>${data.transcript || 'No transcript available'}</p>
+                <p class="confidence">Confidence: ${(data.confidence * 100).toFixed(2)}%</p>
+            `;
+            resultsDiv.appendChild(transcriptDiv);
+            
+            // Display language tags
+            const languageTagsDiv = document.createElement('div');
+            languageTagsDiv.className = 'language-tags';
+            
+            // Show detected languages if available
+            if (data.detected_languages && data.detected_languages.length > 0) {
+                languageTagsDiv.innerHTML = `<strong>Detected Languages:</strong> `;
+                data.detected_languages.forEach(lang => {
+                    const langTag = document.createElement('span');
+                    langTag.className = 'language-tag';
+                    langTag.textContent = lang;
+                    languageTagsDiv.appendChild(langTag);
+                });
+            } else {
+                // Show configured languages
+                languageTagsDiv.innerHTML = `<strong>Primary Language:</strong> `;
+                
+                const primaryLangTag = document.createElement('span');
+                primaryLangTag.className = 'language-tag';
+                primaryLangTag.textContent = document.getElementById('languageCode').value;
+                languageTagsDiv.appendChild(primaryLangTag);
+                
+                // Add alternative languages if any
+                const altLangs = document.getElementById('alternativeLanguageCodes').value;
+                if (altLangs) {
+                    languageTagsDiv.innerHTML += `<br><strong>Alternative Languages:</strong> `;
+                    altLangs.split(',').forEach(lang => {
+                        const langTag = document.createElement('span');
+                        langTag.className = 'language-tag';
+                        langTag.textContent = lang.trim();
+                        languageTagsDiv.appendChild(langTag);
+                    });
+                }
+            }
+            
+            resultsDiv.appendChild(languageTagsDiv);
+            
+            // Display alternatives if available
+            if (data.results && data.results.length > 0 && data.results[0].alternatives && data.results[0].alternatives.length > 1) {
+                const alternativesDiv = document.createElement('div');
+                alternativesDiv.className = 'transcript';
+                alternativesDiv.innerHTML = `<h3>Alternative Transcripts:</h3>`;
+                
+                for (let i = 1; i < data.results[0].alternatives.length; i++) {
+                    const alt = data.results[0].alternatives[i];
+                    alternativesDiv.innerHTML += `
+                        <p>${alt.transcript || 'No transcript available'}</p>
+                        <p class="confidence">Confidence: ${(alt.confidence * 100).toFixed(2)}%</p>
+                    `;
+                }
+                
+                resultsDiv.appendChild(alternativesDiv);
+            }
+            
+            // Display raw results for debugging
+            const rawResultsDiv = document.createElement('div');
+            rawResultsDiv.className = 'transcript';
+            rawResultsDiv.innerHTML = `
+                <h3>Raw Results:</h3>
+                <pre>${JSON.stringify(data.results, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(rawResultsDiv);
+            
+            document.getElementById('resultContainer').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

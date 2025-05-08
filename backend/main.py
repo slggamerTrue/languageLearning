@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(lesson_api.router)
 app.include_router(assessment_api.router)
 app.include_router(tts_api.router)
+#app.include_router(asr_api.router)
 
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="static"), name="static")

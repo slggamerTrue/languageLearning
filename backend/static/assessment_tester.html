@@ -135,6 +135,7 @@
     
     <div class="tabs">
         <div class="tab active" data-api="initial-chat">Initial Chat</div>
+        <div class="tab" data-api="total-plan-chat">Total Plan Chat</div>
         <div class="tab" data-api="analyze-profile">Analyze Profile</div>
         <div class="tab" data-api="generate-total-plan">Generate Total Plan</div>
         <div class="tab" data-api="generate-weekly-plan">Generate Weekly Plan</div>
@@ -176,17 +177,66 @@
             <button class="load-template" onclick="loadTemplate('initial-chat')">Load Selected Template</button>
             <button class="clear-btn" onclick="clearInput('initial-chat')">Clear</button>
             <button onclick="sendRequest('initial-chat')">Send Request</button>
-            <button class="continue-chat-btn" onclick="continueChat()" style="background-color: #9C27B0;">Continue Chat</button>
+            <button class="continue-chat-btn" onclick="continueChat('initial-chat')" style="background-color: #9C27B0;">Continue Chat</button>
         </div>
-        <div class="chat-input-area" style="margin-top: 15px; display: none;">
-            <input type="text" id="user-message" placeholder="Type your message here..." style="width: 80%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-            <button onclick="sendChatMessage()" style="margin-left: 10px;">Send</button>
+        <div class="chat-input-area" id="initial-chat-input-area" style="margin-top: 15px; display: none;">
+            <input type="text" id="initial-chat-message" placeholder="Type your message here..." style="width: 80%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button onclick="sendChatMessage('initial-chat')" style="margin-left: 10px;">Send</button>
         </div>
         <div class="loading" id="initial-chat-loading">
             <div class="spinner"></div>
             <p>Processing request...</p>
         </div>
         <div class="response-area" id="initial-chat-response"></div>
+    </div>
+    
+    <div class="api-section" id="total-plan-chat-section" style="display: none;">
+        <h2 class="api-title">Total Plan Chat API</h2>
+        <div class="template-selector">
+            <select id="total-plan-chat-template">
+                <option value="">Select a template...</option>
+                <option value="template1">Basic User Feedback Template</option>
+                <option value="template2">Advanced User Feedback Template</option>
+            </select>
+        </div>
+        <div class="language-selector" style="margin-bottom: 10px; display: flex; gap: 10px;">
+            <select id="total-plan-chat-native-lang" style="width: 50%;">
+                <option value="cmn-CN">中文</option>
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+            </select>
+            <select id="total-plan-chat-learning-lang" style="width: 50%;">
+                <option value="en-US">English</option>
+                <option value="fr-FR">French</option>
+                <option value="es-ES">Spanish</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="cmn-CN">中文</option>
+            </select>
+        </div>
+        <div class="input-area">
+            <textarea id="total-plan-chat-input" placeholder="Enter your request body here (JSON format)..."></textarea>
+        </div>
+        <div class="button-area">
+            <button class="load-template" onclick="loadTemplate('total-plan-chat')">Load Selected Template</button>
+            <button class="clear-btn" onclick="clearInput('total-plan-chat')">Clear</button>
+            <button onclick="sendRequest('total-plan-chat')">Send Request</button>
+            <button class="continue-chat-btn" onclick="continueChat('total-plan-chat')" style="background-color: #9C27B0;">Continue Chat</button>
+        </div>
+        <div class="chat-input-area" id="total-plan-chat-input-area" style="margin-top: 15px; display: none;">
+            <input type="text" id="total-plan-chat-message" placeholder="Type your message here..." style="width: 80%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button onclick="sendChatMessage('total-plan-chat')" style="margin-left: 10px;">Send</button>
+        </div>
+        <div class="loading" id="total-plan-chat-loading">
+            <div class="spinner"></div>
+            <p>Processing request...</p>
+        </div>
+        <div class="response-area" id="total-plan-chat-response"></div>
     </div>
     
     <div class="api-section" id="analyze-profile-section" style="display: none;">
@@ -446,6 +496,20 @@
                     }
                 }
             },
+            'total-plan-chat': {
+                'template1': [
+                    {
+                        "role": "user",
+                        "content": "我不太喜欢你给我规划的学习计划，能不能改一下？"
+                    }
+                ],
+                'template2': [
+                    {
+                        "role": "user",
+                        "content": "I don't think this learning plan works for me. Can we make some adjustments?"
+                    }
+                ]
+            },
             'generate-weekly-plan': {
                 'template1': {
                     "english_level": "B1",
@@ -553,10 +617,14 @@
                 // Display response
                 responseElement.textContent = JSON.stringify(data, null, 2);
                 
-                // If this is the initial-chat API, store the last response for continuing the chat
-                if (api === 'initial-chat') {
-                    window.lastChatResponse = data;
-                }
+                // 创建安全的变量名并存储响应
+                const safeApiName = api.replace(/-/g, '_');
+                const responseVar = `last_${safeApiName}_Response`;
+                console.log(`Storing response in ${responseVar}`);
+                window[responseVar] = data;
+                
+                // 添加调试信息
+                console.log('Response stored:', window[responseVar]);
             } catch (error) {
                 responseElement.textContent = `Error: ${error.message}`;
             } finally {
@@ -566,44 +634,51 @@
         }
 
         // Function to continue the chat with previous response and new user input
-        function continueChat() {
-            if (!window.lastChatResponse) {
+        function continueChat(api) {
+            // 创建一个安全的变量名（移除连字符）
+            const safeApiName = api.replace(/-/g, '_');
+            
+            if (!window[`last_${safeApiName}_Response`]) {
                 alert('Please send an initial request first');
                 return;
             }
             
             // Show the chat input area
-            document.querySelector('.chat-input-area').style.display = 'flex';
-            document.getElementById('user-message').focus();
+            document.getElementById(`${api}-input-area`).style.display = 'flex';
+            document.getElementById(`${api}-message`).focus();
         }
         
         // Function to send a chat message
-        async function sendChatMessage() {
-            const userMessage = document.getElementById('user-message').value.trim();
+        async function sendChatMessage(api) {
+            const userMessage = document.getElementById(`${api}-message`).value.trim();
             if (!userMessage) return;
             
             try {
-                const inputElement = document.getElementById('initial-chat-input');
-                const responseElement = document.getElementById('initial-chat-response');
-                const loadingElement = document.getElementById('initial-chat-loading');
+                const inputElement = document.getElementById(`${api}-input`);
+                const responseElement = document.getElementById(`${api}-response`);
+                const loadingElement = document.getElementById(`${api}-loading`);
                 
                 // Get current conversation history
                 let currentConversation = JSON.parse(inputElement.value);
                 
+                // 创建一个安全的变量名（移除连字符）
+                const safeApiName = api.replace(/-/g, '_');
+                const responseVar = `last_${safeApiName}_Response`;
+                
                 // Add the last assistant response if it exists and isn't already in the conversation
-                if (window.lastChatResponse && window.lastChatResponse.role === 'assistant') {
+                if (window[responseVar] && window[responseVar].role === 'assistant') {
                     // Check if the last response is already in the conversation
                     const lastResponseExists = currentConversation.some(msg => 
                         msg.role === 'assistant' && 
-                        msg.content === window.lastChatResponse.content
+                        msg.content === window[responseVar].content
                     );
                     
                     if (!lastResponseExists) {
                         currentConversation.push({
                             role: 'assistant',
-                            content: window.lastChatResponse.content,
-                            speechText: window.lastChatResponse.speechText,
-                            displayText: window.lastChatResponse.displayText
+                            content: window[responseVar].content,
+                            speechText: window[responseVar].speechText,
+                            displayText: window[responseVar].displayText
                         });
                     }
                 }
@@ -618,18 +693,18 @@
                 inputElement.value = JSON.stringify(currentConversation, null, 2);
                 
                 // Clear the message input
-                document.getElementById('user-message').value = '';
+                document.getElementById(`${api}-message`).value = '';
                 
                 // Show loading
                 loadingElement.style.display = 'block';
                 responseElement.textContent = '';
                 
                 // Get language parameters
-                const nativeLang = document.getElementById('initial-chat-native-lang').value;
-                const learningLang = document.getElementById('initial-chat-learning-lang').value;
+                const nativeLang = document.getElementById(`${api}-native-lang`).value;
+                const learningLang = document.getElementById(`${api}-learning-lang`).value;
                 
                 // Send request with language parameters as URL query parameters
-                const url = new URL('/api/assessment/initial-chat', window.location.origin);
+                const url = new URL(`/api/assessment/${api}`, window.location.origin);
                 url.searchParams.append('native_lang', nativeLang);
                 url.searchParams.append('learning_lang', learningLang);
                 
@@ -647,23 +722,30 @@
                 // Display response
                 responseElement.textContent = JSON.stringify(data, null, 2);
                 
-                // Store the last response
-                window.lastChatResponse = data;
+                // 存储响应（使用之前创建的变量名）
+                window[responseVar] = data;
                 
             } catch (error) {
-                document.getElementById('initial-chat-response').textContent = `Error: ${error.message}`;
+                document.getElementById(`${api}-response`).textContent = `Error: ${error.message}`;
             } finally {
                 // Hide loading
-                document.getElementById('initial-chat-loading').style.display = 'none';
+                document.getElementById(`${api}-loading`).style.display = 'none';
             }
         }
         
         // Add event listener for Enter key in the chat input
         document.addEventListener('DOMContentLoaded', function() {
-            const userMessageInput = document.getElementById('user-message');
-            userMessageInput.addEventListener('keypress', function(e) {
+            const initialChatMessage = document.getElementById('initial-chat-message');
+            initialChatMessage.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    sendChatMessage();
+                    sendChatMessage('initial-chat');
+                }
+            });
+            
+            const totalPlanChatMessage = document.getElementById('total-plan-chat-message');
+            totalPlanChatMessage.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendChatMessage('total-plan-chat');
                 }
             });
         });
@@ -672,12 +754,14 @@
         window.onload = function() {
             // Set initial templates
             document.getElementById('initial-chat-input').value = JSON.stringify(templates['initial-chat']['template1'], null, 2);
+            document.getElementById('total-plan-chat-input').value = JSON.stringify(templates['total-plan-chat']['template1'], null, 2);
             document.getElementById('analyze-profile-input').value = JSON.stringify(templates['analyze-profile']['template1'], null, 2);
             document.getElementById('generate-total-plan-input').value = JSON.stringify(templates['generate-total-plan']['template1'], null, 2);
             document.getElementById('generate-weekly-plan-input').value = JSON.stringify(templates['generate-weekly-plan']['template1'], null, 2);
             
-            // Initialize lastChatResponse
-            window.lastChatResponse = null;
+            // Initialize response variables with safe names
+            window.last_initial_chat_Response = null;
+            window.last_total_plan_chat_Response = null;
         };
     </script>
 </body>

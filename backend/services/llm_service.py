@@ -5,17 +5,34 @@ import os
 
 class LLMService:
     def __init__(self):
-        #self.base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-        #self.model = "qwen-plus"
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-        #self.model = "gemini-2.0-flash"
-        self.model = "gemini-2.5-pro-preview-03-25"
-        #self.base_url = "https://llm.promptai.cn/pk/api/chat"
-        #self.model = "pkqwen2.5-32b:latest"
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {os.getenv('PROMPTAI_API_KEY')}"
-        }
+        # Get LLM provider from environment variable, default to 'google'
+        llm_provider = os.getenv('LLM_PROVIDER', 'google').lower()
+        
+        # Configure base_url and model based on the provider
+        if llm_provider == 'aliyun':
+            self.base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+            self.model = os.getenv('LLM_MODEL', 'qwen-plus')
+            self.headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {os.getenv('ALIYUN_API_KEY')}"
+            }
+        elif llm_provider == 'promptai':
+            self.base_url = "https://llm.promptai.cn/pk/api/chat"
+            self.model = os.getenv('LLM_MODEL', 'pkqwen2.5-32b:latest')
+            self.headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {os.getenv('PROMPTAI_API_KEY')}"
+            }
+        else:  # default to google
+            self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+            self.model = os.getenv('LLM_MODEL', 'gemini-2.5-pro-preview-03-25')
+            self.headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {os.getenv('GOOGLE_API_KEY')}"
+            }
+            
+        # Log which provider and model we're using
+        print(f"Using LLM provider: {llm_provider}, model: {self.model}")
 
     async def chat_completion(self, messages: List[Dict], model: Optional[str] = None) -> Dict:
         """
@@ -42,7 +59,11 @@ class LLMService:
                         raise Exception(f"API call failed: {error_text}")
                     
                     result = await response.json()
-                    return {"role": "assistant", "content": result["choices"][0]["message"]["content"]}
+                    return {
+                        "role": "assistant", 
+                        "content": result["choices"][0]["message"]["content"],
+                        "usage": result["usage"]
+                    }
                     #return {"role": "assistant", "content": result["message"]["content"]}
 
         except Exception as e:
@@ -130,6 +151,12 @@ class LLMService:
                 if isinstance(result, str):
                     result = json.loads(result)
                 
+                # 如果结果是数组，将其放入content字段中，确保返回的始终是一个对象
+                if isinstance(result, list):
+                    result = {"content": result}
+                    
+                # 添加usage信息
+                result["usage"] = response["usage"]
                 return result
             except Exception as e:
                 print("\n=== JSON 解析错误 ===\n")
@@ -141,7 +168,7 @@ class LLMService:
                 # 添加重试消息
                 system_message = {
                     "role": "system",
-                    "content": "之前的需求如下，但返回结果没有严格按照json格式要求返回，请将返回结果严格按照json格式要求返回，特别注意是否一个有效的json格式，如string中出现引号是否正确转义，格式要求如下：" + messages[0]["content"] if isinstance(messages[0], dict) else str(messages[0])
+                    "content": "下面返回的内容不是一个有效的json格式，请将下面错误的json格式修复返回，仅返回json即可，无需其他说明。原始的格式要求如下：" + messages[0]["content"] if isinstance(messages[0], dict) else str(messages[0])
                 }
                 user_message = {
                     "role": "user",
@@ -214,6 +241,13 @@ class LLMService:
                     # 如果结果是字符串，尝试解析为 JSON
                     if isinstance(retry_result, str):
                         retry_result = json.loads(retry_result)
+                    
+                    # 如果结果是数组，将其放入content字段中，确保返回的始终是一个对象
+                    if isinstance(retry_result, list):
+                        retry_result = {"content": retry_result}
+                    
+                    # 添加usage信息
+                    retry_result["usage"] = response["usage"]
                     
                     return retry_result
                 except Exception as retry_e:

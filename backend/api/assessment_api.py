@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Body, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Response
 from services.assessment import AssessmentService
 from typing import List, Dict
 
@@ -7,6 +7,7 @@ assessment_service = AssessmentService()
 
 @router.post("/initial-chat")
 async def chat_with_ai(
+    response: Response,
     messages: List[Dict] = Body(...),
     native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
@@ -16,13 +17,51 @@ async def chat_with_ai(
     """
     try:
         # 获取AI响应
-        response = await assessment_service.conduct_initial_assessment(messages, native_lang, learning_lang)
-        return response
+        result = await assessment_service.conduct_initial_assessment(messages, native_lang, learning_lang)
+        usage = result.pop("usage", None)
+        if usage and isinstance(usage, dict):
+            # Add usage information to response headers
+            if "prompt_tokens" in usage:
+                response.headers["X-Prompt-Tokens"] = str(usage["prompt_tokens"])
+            if "completion_tokens" in usage:
+                response.headers["X-Completion-Tokens"] = str(usage["completion_tokens"])
+            if "total_tokens" in usage:
+                response.headers["X-Total-Tokens"] = str(usage["total_tokens"])
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/total-plan-chat")
+async def chat_with_ai(
+    response: Response,
+    messages: List[Dict] = Body(...),
+    native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
+    learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
+):
+    """
+    与AI进行初始对话评估
+    """
+    try:
+        # 获取AI响应
+        result = await assessment_service.conduct_generate_total_plan(messages, native_lang, learning_lang)
+        usage = result.pop("usage", None)
+        if usage and isinstance(usage, dict):
+            # Add usage information to response headers
+            if "prompt_tokens" in usage:
+                response.headers["X-Prompt-Tokens"] = str(usage["prompt_tokens"])
+            if "completion_tokens" in usage:
+                response.headers["X-Completion-Tokens"] = str(usage["completion_tokens"])
+            if "total_tokens" in usage:
+                response.headers["X-Total-Tokens"] = str(usage["total_tokens"])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/analyze-profile")
 async def analyze_user_profile(
+    response: Response,
     messages: List[Dict] = Body(...),
     native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
@@ -33,12 +72,22 @@ async def analyze_user_profile(
     try:
         # 直接使用传入的对话历史进行分析，同时传递语言参数
         profile = await assessment_service.analyze_assessment(messages, native_lang, learning_lang)
+        usage = profile.pop("usage", None)
+        if usage and isinstance(usage, dict):
+            # Add usage information to response headers
+            if "prompt_tokens" in usage:
+                response.headers["X-Prompt-Tokens"] = str(usage["prompt_tokens"])
+            if "completion_tokens" in usage:
+                response.headers["X-Completion-Tokens"] = str(usage["completion_tokens"])
+            if "total_tokens" in usage:
+                response.headers["X-Total-Tokens"] = str(usage["total_tokens"])
         return profile
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/generate-total-plan")
 async def generate_total_plan(
+    response: Response,
     profile: Dict = Body(...),
     native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
@@ -49,12 +98,22 @@ async def generate_total_plan(
     try:
         # 直接使用传入的用户档案生成学习计划
         total_plan = await assessment_service.generate_total_plan(profile, native_lang, learning_lang)
+        usage = total_plan.pop("usage", None)
+        if usage and isinstance(usage, dict):
+            # Add usage information to response headers
+            if "prompt_tokens" in usage:
+                response.headers["X-Prompt-Tokens"] = str(usage["prompt_tokens"])
+            if "completion_tokens" in usage:
+                response.headers["X-Completion-Tokens"] = str(usage["completion_tokens"])
+            if "total_tokens" in usage:
+                response.headers["X-Total-Tokens"] = str(usage["total_tokens"])
         return total_plan
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/generate-weekly-plan")
 async def generate_weekly_plan(
+    response: Response,
     topic_with_profile: Dict = Body(...),
     native_lang: str = Query("", description="用户母语，默认为cmn-CN（中文）"),
     learning_lang: str = Query("en-US", description="学习语言，默认为en-US（英语）")
@@ -65,7 +124,16 @@ async def generate_weekly_plan(
     try:
         # 直接使用传入的用户档案生成学习计划
         weekly_plan = await assessment_service.generate_weekly_plan(topic_with_profile, native_lang, learning_lang)
-        return weekly_plan
+        usage = weekly_plan.pop("usage", None)
+        if usage and isinstance(usage, dict):
+            # Add usage information to response headers
+            if "prompt_tokens" in usage:
+                response.headers["X-Prompt-Tokens"] = str(usage["prompt_tokens"])
+            if "completion_tokens" in usage:
+                response.headers["X-Completion-Tokens"] = str(usage["completion_tokens"])
+            if "total_tokens" in usage:
+                response.headers["X-Total-Tokens"] = str(usage["total_tokens"])
+        return weekly_plan['content']
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

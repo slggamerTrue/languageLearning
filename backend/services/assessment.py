@@ -53,25 +53,24 @@ class AssessmentService:
             if use_english_prompt:
                 system_content = f"""
 --------Role-------------------
-You are a professional {target_language_name} teacher. As the first step in helping a {native_language_name} speaker who want to learn {target_language_name} develop a {target_language_name} learning plan, 
-you need to try to collect the following information through dialogue. If the user's conversation does not provide the above information, 
-you can try to guide the user to provide it.
-Your output must be in valid JSON format, with the guided dialogue content placed in the speechText field.
+You are a professional {target_language_name} teacher. Your name is Polly. 
+Your task is helping a {native_language_name} speaker who want to learn {target_language_name} develop a {target_language_name} learning plan, 
+you need to try to collect the following Target Information through dialogue. Some information may have already been provided, you only need to focus on the information that needs to be supplemented.
 
 -------Target Information-------------------
-1. The user's goal for learning {target_language_name}, what level they need to achieve
-2. The user's self-assessed language proficiency level
-3. Time available for daily study
-4. User's personal information such as {target_language_name} name (if none, suggest one), gender, age, occupation, interests, etc.
+1. User's personal information such as {target_language_name} name (if none, suggest one), gender, age, occupation, interests, etc.
+2. The user's goal for learning {target_language_name}, what level they need to achieve
+3. The user's self-assessed language proficiency level
 
 ---------Important----------------------
 1. Ask only 1 question at a time, dynamically adjusting your expression based on the user's language proficiency.
 2. If the user speaks in another language not {target_language_name}, you can understand but still maintain responses in {target_language_name}.
 3. Maintain a professional and friendly attitude, keeping the dialogue process as brief as possible to complete the collection of information.
 4. When you have collected all the target information or the user clearly indicates that they do not want to provide more information, include the <ASSESSMENT_COMPLETE> mark in the displayText field.
-5. The output must be valid JSON in the following format:
+5. Since it is more convenient for the user to read, the previous learning plan and information may be generated in the language he is familiar with, you always maintain responses in {target_language_name}.
+6. The output must be valid JSON in the following format:
 {{
-    "speechText": string[], # speechText string array, the teacher's speech content, divided into an array of sentences for convenient speech synthesis playback.
+    "speechText": string[], # speechText string array, the teacher's speech content, divided into an array of sentences for convenient speech synthesis playback. Please use {target_language_name}.
     "displayText": str # displayText string, normally empty, output <ASSESSMENT_COMPLETE> mark after collecting sufficient information.
 }}
 """
@@ -114,6 +113,85 @@ Your output must be in valid JSON format, with the guided dialogue content place
                 "content": content,
                 "speechText": response.get("speechText", response.get("content")),
                 "displayText": response.get("displayText", ""),
+                "usage": response.get("usage", None)
+            }
+            return formatted_response
+
+        except Exception as e:
+            raise Exception(f"Assessment failed: {str(e)}")
+
+
+    async def conduct_generate_total_plan(self, messages: List[Dict], native_lang: str = "", learning_lang: str = "en-US") -> Dict:
+        """
+        通过对话修改计划的意见
+        
+        参数:
+            messages: 对话历史
+            native_lang: 用户母语，默认为"cmn-CN"（中文）
+            learning_lang: 学习语言，默认为"en-US"（英语）
+        """
+        try:
+            use_english_prompt = True
+            if native_lang == "":
+                native_lang = "cmn-CN"
+                use_english_prompt = False
+            # 获取语言名称
+            native_language_name = self.get_language_name(native_lang)
+            target_language_name = self.get_language_name(learning_lang)
+            
+            # 根据母语选择提示语言
+            if use_english_prompt:
+                system_content = f"""
+--------Role-------------------
+You are a professional {target_language_name} teacher. Your name is Polly. 
+Your task is helping a {native_language_name} speaker who want to learn {target_language_name} develop a {target_language_name} learning plan, 
+现在用户对这个计划有意见，你需要和用户了解清楚他的具体需求
+
+
+---------Important----------------------
+1. If the user speaks in another language not {target_language_name}, you can understand but still maintain responses in {target_language_name}.
+2. Maintain a professional and friendly attitude, keeping the dialogue process as brief as possible to complete the collection of information.
+3. Since it is more convenient for the user to read, the previous learning plan and information may be generated in the language he is familiar with, you always maintain responses in {target_language_name}.
+4. 当你确定充分明白了用户的意思后, include the <ASSESSMENT_COMPLETE> mark in the displayText field.
+5. The output must be valid JSON in the following format:
+{{
+    "speechText": string[], # speechText string array, the teacher's speech content, divided into an array of sentences for convenient speech synthesis playback. Please use {target_language_name}.
+    "displayText": str # displayText string, normally empty, output <ASSESSMENT_COMPLETE> mark after collecting sufficient information.
+}}
+"""
+            else:
+                system_content = """
+--------Role-------------------
+你是一个专业的英语教师。用户对于目前制定的学习计划有意见，请和用户充分沟通
+
+---------Important----------------------
+1. 如果学生用英语回答，就用英语交流；如果学生用其他语言说，你能理解但是仍然保持用英文回答。
+2. 保持专业和友好的态度，尽量简短对话过程以完成信息的收集。
+3. 当你充分理解了用户的意见后，在displayText字段中包含 <ASSESSMENT_COMPLETE> 标记：
+4. 输出必须是一个有效的json，json格式为：
+{
+    "speechText": string[], #speechText字符串数组，教师说话的内容，为方便语音合成播放，分为一句一句的数组.
+    "displayText": str #displayText字符串，平时为空，收集到足够信息后，输出<ASSESSMENT_COMPLETE>标记.
+}
+
+# """
+            
+            system_message = {
+                "role": "system",
+                "content": system_content
+            }
+            
+            messages_with_system = [system_message] + [{"role": "user", "content": "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])}]
+            #return await self.llm.chat_completion(all_messages)
+            response = await self.llm.structured_chat(messages_with_system)
+            content = "".join(response.get("speechText", response.get("content")))
+            # 解析JSON响应
+            formatted_response = {
+                "role": "assistant",
+                "content": content,
+                "speechText": response.get("speechText", response.get("content")),
+                "displayText": response.get("displayText", ""),
+                "usage": response.get("usage", None)
             }
             return formatted_response
 
@@ -191,17 +269,7 @@ Based on the dialogue provided, you must extract the following information and s
     * Describe goals in detail (e.g., if "for work," specify the context like "difficulty expressing ideas during stand-up meetings" or "uncertainty in phrasing opinions in professional emails").
     * Include specific scenarios mentioned (e.g., "writing reports," "giving presentations").
 
-4.  **Daily Study Time (minutes):**
-    * Record the specific daily study time (in minutes) mentioned by the user.
-    * If the user does not specify a time, recommend a suitable duration (as an integer representing minutes) based on their learning goals and interests.
-    * The output value *must* be an integer.
-
-5.  **Total Study Days:**
-    * Record the number of study days based on any deadline or timeframe provided by the user.
-    * If no deadline is provided, estimate the total number of days required to achieve the stated learning goals, considering their current proficiency level.
-    * The output value *must* be an integer.
-
-6.  **Pacing Recommendation:**
+4.  **Pacing Recommendation:**
     * Based on the user's assessed {target_language_name} level and learning goals, recommend a suitable learning pace.
     * The value must be one of: `"slowest"`, `"slow"`, or `"normal"`.
 
@@ -220,14 +288,12 @@ Do not include any explanations, comments outside the defined structure, or fiel
         "other": string // Any other relevant personal information mentioned (use empty string "" if not provided)
     }},
     "language_level": {{
-        "text": string,   // Text description of the assessed level, please use {native_language_name} language
+        "text": string,   // Title and description of the assessed level. please use {native_language_name} language
         "score": number // The corresponding proficiency score (0-9)
     }},
     "speed": string, // Recommended learning pace: "slowest", "slow", or "normal"
     "interests": string[], // Array of strings detailing interests and hobbies
     "learning_goals": string[], // Array of strings detailing learning goals
-    "study_time_per_day": number, // Recommended or stated daily study time in minutes (integer)
-    "total_study_day": number // Estimated or stated total study days (integer)
 }}
                 """
                 
@@ -353,21 +419,15 @@ Do not include any explanations, comments outside the defined structure, or fiel
             # 根据母语选择提示语言
             if use_english_prompt:
                 prompt_content = f'''
-                Based on the following user information, please estimate the number of weeks needed to achieve the learning goals and create a total learning plan to study the {target_language_name} language for a {native_language_name} speaker. 
+                你是一个专业的{target_language_name}老师，基于下面提供的用户对话要求, 请以每天能学习半小时的时间安排，帮用户基于之前的课程继续制定4周的学习计划 to study the {target_language_name} language for a {native_language_name} speaker. 
                 When creating the learning plan, consider the user's learning purpose.
-                If the user wants comprehensive improvement/travel/work, base the learning content on various real-life conversation scenarios.
-                If the user wants to pass tests like TOEFL, IELTS, SAT, etc., follow the test outline to create learning content.
-                If the user wants to learn about history, literature, art, or other knowledge, follow the knowledge outline of that field to create learning content.
-                If the user just wants to learn a new language, follow the {target_language_name} country's most widely used textbooks to create learning content.
-                
-                {user_profile}
                 
                 Please consider the following factors:
-                1. The user's starting point (current {target_language_name} level) and the user's age
-                2. The difficulty and number of learning goals
-                3. Daily study time invested
-                4. General learning curve and progress
-                5. Create a maximum 4-week learning plan, calculating 7 days of study per week. If there is too much content to learn, prioritize breadth over depth.
+                1. 考虑用户当前的{target_language_name}水平和年龄安排课程。比如用户已经对语言有部分掌握的情况下，制定的课程就不应该再是打招呼这些基本表达。而用户年龄小的情况下你就不应该制定一些太技术的场景。
+                2. 安排课程一定要围绕用户设定的学习目标，并且已目标对应的各种场景对话为主。我们的目标不是学习考试，而是实际使用。
+                3. 考虑用户已经学习过的课程安排后续的学习计划，既要围绕学习目标，保证课程的连续性，同时尽量不要重复已经学习过的课程。
+                4. 如果用户表示时间比较紧迫，并且有太多需要学习的内容，则可以广度优先编排计划。同时表明，方便后续制定目标时知道这部分是需要深化的。
+                5. Create a maximum 4-week learning plan, 考虑到每周有7天，计划主题应该多一点方便后续基于每周计划生成日计划. 周数请与之前的课程编号保持连续。
                 
                 Please return in JSON format, without additional information, including an estimated number of weeks (integer) and
                 weekly learning content. The learning content should be an array of strings, with each string describing the goals and specific learning content for each week.
@@ -411,8 +471,12 @@ Do not include any explanations, comments outside the defined structure, or fiel
                 "role": "user",
                 "content": prompt_content
             }
-            
-            result = await self.llm.structured_chat([estimate_prompt])
+            content_text_user = {
+                "role": "user",
+                "content": str(user_profile)
+            }
+            messages = [estimate_prompt, content_text_user]
+            result = await self.llm.structured_chat(messages)
             result['start_date'] = datetime.now()
             return result 
             
@@ -498,8 +562,9 @@ Do not include any explanations, comments outside the defined structure, or fiel
             if use_english_prompt:
                 prompt_content = f'''
                 As an experienced {target_language_name} teacher, please help a {native_language_name} speaker to create a detailed and engaging study plan for this week based on the user input.
-                The learning plans may involve history, drawing, music, work, study, etc., but you should find ways to incorporate grammar, sentence patterns, 
-                vocabulary, phrases, idioms, language sense, expressions, etc. to achieve the goal of learning through enjoyment. Ensure:
+                学习计划请尽量基于场景和其事件设计，例如一个购物的场景，常用的句式，单词，短语，习语，语感，表达方式，还有可能出现哪些特殊情况。
+                当然如果用户是学习历史，阅读一本小说，分享一部电影这种连续性的，你无需非要每课都学习点东西，按连续性的交流即可。这种情况你也不要让用户自己去查资料，你直接提供材料大纲。
+                确保：
                 1. Break down the weekly learning plan into daily learning plans, with practical scenarios for each learning plan
                 2. Arrange appropriate review time for learning the content from the previous week
                 3. Control the daily learning amount to match the user's time schedule; a lesson can have fewer knowledge points but more practical scenarios for students to practice

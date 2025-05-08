@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .audio-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .loading {
+            text-align: center;
+            display: none;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .params-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .params-container .form-group {
+            flex: 1 1 200px;
+        }
+        .text-list {
+            margin-bottom: 10px;
+        }
+        .text-item {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        .text-item input {
+            flex-grow: 1;
+            margin-right: 5px;
+        }
+        .text-item button {
+            background-color: #e74c3c;
+        }
+        .add-text-btn {
+            background-color: #2ecc71;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TTS API Test</h1>
+    
+    <div class="form-container">
+        <div class="form-group">
+            <label>Text Inputs:</label>
+            <div class="text-list" id="textList">
+                <div class="text-item">
+                    <input type="text" class="text-input" placeholder="Enter text to convert to speech" value="Hello, this is a test of the text to speech API.">
+                    <button class="remove-text-btn" onclick="removeTextInput(this)">-</button>
+                </div>
+            </div>
+            <button class="add-text-btn" onclick="addTextInput()">+ Add Text</button>
+        </div>
+
+        <div class="params-container">
+            <div class="form-group">
+                <label for="temperature">Temperature:</label>
+                <input type="number" id="temperature" value="0.3" min="0" max="1" step="0.1">
+            </div>
+            
+            <div class="form-group">
+                <label for="topP">Top P:</label>
+                <input type="number" id="topP" value="0.7" min="0" max="1" step="0.1">
+            </div>
+            
+            <div class="form-group">
+                <label for="topK">Top K:</label>
+                <input type="number" id="topK" value="20" min="1" max="100" step="1">
+            </div>
+            
+            <div class="form-group">
+                <label for="speed">Speed (1-10):</label>
+                <input type="number" id="speed" value="5" min="1" max="10" step="1">
+            </div>
+        </div>
+
+        <div class="params-container">
+            <div class="form-group">
+                <label for="prompt">Prompt:</label>
+                <input type="text" id="prompt" value="[oral_2][laugh_0][break_4]">
+            </div>
+            
+            <div class="form-group">
+                <label for="useRandomSpeaker">Use Random Speaker:</label>
+                <select id="useRandomSpeaker">
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="audioSeed">Audio Seed (optional):</label>
+                <input type="number" id="audioSeed" placeholder="Leave empty for random">
+            </div>
+            
+            <div class="form-group">
+                <label for="speakerType">Speaker Type:</label>
+                <select id="speakerType">
+                    <option value="">Default</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="params-container">
+            <div class="form-group">
+                <label for="nativeLang">Native Language:</label>
+                <input type="text" id="nativeLang" value="cmn-CN">
+            </div>
+            
+            <div class="form-group">
+                <label for="learningLang">Learning Language:</label>
+                <input type="text" id="learningLang" value="en-US">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <button onclick="generateSpeech()">Generate Speech</button>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <p>Generating speech...</p>
+    </div>
+    
+    <div class="result-container" id="resultContainer" style="display: none;">
+        <h2>Results:</h2>
+        <div id="results"></div>
+    </div>
+    
+    <script>
+        function addTextInput() {
+            const textList = document.getElementById('textList');
+            const textItem = document.createElement('div');
+            textItem.className = 'text-item';
+            textItem.innerHTML = `
+                <input type="text" class="text-input" placeholder="Enter text to convert to speech">
+                <button class="remove-text-btn" onclick="removeTextInput(this)">-</button>
+            `;
+            textList.appendChild(textItem);
+        }
+        
+        function removeTextInput(button) {
+            const textList = document.getElementById('textList');
+            if (textList.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+        
+        async function generateSpeech() {
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            // Get all text inputs
+            const textInputs = document.querySelectorAll('.text-input');
+            const texts = Array.from(textInputs).map(input => input.value).filter(text => text.trim() !== '');
+            
+            if (texts.length === 0) {
+                alert('Please enter at least one text to convert to speech');
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            
+            // Get other parameters
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const topP = parseFloat(document.getElementById('topP').value);
+            const topK = parseInt(document.getElementById('topK').value);
+            const speed = parseInt(document.getElementById('speed').value);
+            const prompt = document.getElementById('prompt').value;
+            const useRandomSpeaker = document.getElementById('useRandomSpeaker').value === 'true';
+            
+            // Optional parameters
+            const audioSeedInput = document.getElementById('audioSeed').value;
+            const audioSeed = audioSeedInput ? parseInt(audioSeedInput) : null;
+            
+            const speakerType = document.getElementById('speakerType').value || null;
+            const nativeLang = document.getElementById('nativeLang').value;
+            const learningLang = document.getElementById('learningLang').value;
+            
+            // Prepare request payload
+            const requestData = {
+                texts: texts,
+                temperature: temperature,
+                top_p: topP,
+                top_k: topK,
+                speed: speed,
+                prompt: prompt,
+                use_random_speaker: useRandomSpeaker,
+                audio_seed: audioSeed,
+                speaker_type: speakerType
+            };
+            
+            try {
+                // Make API request
+                const response = await fetch(`/api/tts/generate?native_lang=${encodeURIComponent(nativeLang)}&learning_lang=${encodeURIComponent(learningLang)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`API Error (${response.status}): ${errorText}`);
+                }
+                
+                const data = await response.json();
+                displayResults(data.results);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                document.getElementById('resultContainer').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            if (!results || results.length === 0) {
+                resultsDiv.innerHTML = '<div class="error">No results returned from the API</div>';
+                document.getElementById('resultContainer').style.display = 'block';
+                return;
+            }
+            
+            results.forEach((result, index) => {
+                const audioItem = document.createElement('div');
+                audioItem.className = 'audio-item';
+                
+                // Create audio element
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                
+                // Set audio source from base64
+                if (result.audio_content) {
+                    const audioSrc = `data:audio/mp3;base64,${result.audio_content}`;
+                    audio.src = audioSrc;
+                }
+                
+                // Add text and audio to the item
+                audioItem.innerHTML = `
+                    <p><strong>Text ${index + 1}:</strong> ${result.text}</p>
+                `;
+                audioItem.appendChild(audio);
+                
+                // Add download button
+                if (result.audio_content) {
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download Audio';
+                    downloadBtn.style.marginTop = '10px';
+                    downloadBtn.onclick = () => {
+                        const link = document.createElement('a');
+                        link.href = `data:audio/mp3;base64,${result.audio_content}`;
+                        link.download = `tts-audio-${index + 1}.mp3`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
+                    audioItem.appendChild(downloadBtn);
+                }
+                
+                resultsDiv.appendChild(audioItem);
+            });
+            
+            document.getElementById('resultContainer').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
