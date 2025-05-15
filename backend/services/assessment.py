@@ -427,7 +427,8 @@ Do not include any explanations, comments outside the defined structure, or fiel
                 2. 安排课程一定要围绕用户设定的学习目标，并且已目标对应的各种场景对话为主。我们的目标不是学习考试，而是实际使用。
                 3. 考虑用户已经学习过的课程安排后续的学习计划，既要围绕学习目标，保证课程的连续性，同时尽量不要重复已经学习过的课程。
                 4. 如果用户表示时间比较紧迫，并且有太多需要学习的内容，则可以广度优先编排计划。同时表明，方便后续制定目标时知道这部分是需要深化的。
-                5. Create a maximum 4-week learning plan, 考虑到每周有7天，计划主题应该多一点方便后续基于每周计划生成日计划. 周数请与之前的课程编号保持连续。
+                5. Create a maximum 4-week learning plan, 考虑到每周有7天，计划主题应该多一点方便后续基于每周计划生成日计划. 
+                6. 如果是重新制定计划，周数请与之前保持一致，如果是制定后续计划，周数请与之前的课程编号保持连续。
                 
                 Please return in JSON format, without additional information, including an estimated number of weeks (integer) and
                 weekly learning content. The learning content should be an array of strings, with each string describing the goals and specific learning content for each week.

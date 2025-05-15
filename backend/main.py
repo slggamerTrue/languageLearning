@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from api import lesson_api, assessment_api, tts_api
+from api import google_auth_api
 
 # 加载环境变量
 load_dotenv()
@@ -22,6 +23,7 @@ app.add_middleware(
 app.include_router(lesson_api.router)
 app.include_router(assessment_api.router)
 app.include_router(tts_api.router)
+app.include_router(google_auth_api.router, prefix="/api/auth")
 #app.include_router(asr_api.router)
 
 # 挂载静态文件
